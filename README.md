@@ -1,35 +1,38 @@
-# wifiCrack
+### Esta herramienta es un fork de un script que hizo [s4vitar](https://github.com/s4vitar/wifiCrack), adaptado a 2022, probado con una distribución de fedora.
 
-Herramienta ideal para automatizar ataques WiFi (WPA/WPA2 - PSK) destinados a la obtención de la contraseña.
+# wifi_crack.sh
 
-Esta herramienta nos la fuimos desarrollando en un directo que hice en Twitch, a petición de los espectadores decidimos subirlo como repositorio para que todos se la pudieran descargar.
+## Mejoras con respecto a la version de 2020
 
-Puedes ver el vídeo completo aquí, donde nos desarrollamos la herramienta paso a paso:
+1. Actualización de paquetes y programas a 2022
+2. Compatibilidad con distribuciones que manejan apt, pacman, yum o dnf cómo administrador de paquetes
+3. Menu interactivo para elegir la tarjeta de red haciendo uso del elegante select de bash
+4. Compatibilidad a la hora de reiniciar el network-manager/NetworkManager y reestablecer el wpa_supplicant
+5. En vez de poner el nombre de la red en un ataque handshake, ponemos el bssid. Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
 
-* [https://www.youtube.com/watch?v=Mwt_RbdpJhk](https://www.youtube.com/watch?v=Mwt_RbdpJhk)
+## El resto de las cosas se mantienen del script original:
 
-La herramienta **wifiCrack** cuenta con 2 modos de ataque. El primero de ellos es el ataque **Handshake**, donde de manera automatizada, se gestiona todo lo necesario para mediante un ataque clásico de de-autenticación y reconexión por parte de una estación, se obtenga un Handshake válido con el que posteriormente poder trabajar para aplicar fuerza bruta.
+1. 2 modos de ataque: PKMID y Handshake
+2. Panel de ayuda muy similar
+3. Logica de los ataques
 
-El segundo modo de ataque, es el **PKMID ClientLess Attack**, que centra su atención en las redes inalámbricas que no disponen de clientes asociados (Método Moderno).
 
-## ¿Cómo se ejecuta la herramienta?
+    Usage: ./wifi_crack.sh -a attack_mode
+            a) Attack mode
+            Available attack modes:
+                    PMKID
+                    Handshake
+            h) Help panel
+            Show this help panel
 
-Buena pregunta Mike. Pues bueno... la herramienta cuenta con 2 parámetros, por un lado el parámetro '**-a**' para especificar el modo de ataque (Handshake|PKMID) y por otro lado el parámetro **-n** para especificar el nombre de la tarjeta de red.
+            Example: ./wifi_crack.sh -a PMKID
 
-De todas formas, la herramienta cuenta con un panel de ayuda tras su ejecución:
+    [-] Taking network card to monitor mode...
+    [+] Network card is now in managed mode.
 
-```bash
-┌─[root@parrot]─[/home/s4vitar/Desktop/Directo]
-└──╼ #./s4viPwnWifi.sh 
+    [-] Restarting network manager...
+    [+] Network manager restarted.
 
-[*] Uso: ./s4viPwnWifi.sh
+    [-] Exiting...
 
-        a) Modo de ataque
-                Handshake
-                PKMID
-        n) Nombre de la tarjeta de red
-        h) Mostrar este panel de ayuda
-```
-
-Ya con estos parámetros definidos, en función del modo de ataque seleccionado... se desplegará todo lo necesario de forma automática.
 
