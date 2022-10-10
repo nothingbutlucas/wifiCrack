@@ -6,10 +6,11 @@
 
 1. Actualización de **paquetes y programas** a sus respectivas versiones de **2022**.
 2. **Compatibilidad** con distribuciones que manejan **apt, pacman, yum o dnf** cómo administrador de paquetes.
-3. **Menu interactivo** para elegir la **tarjeta de red** haciendo uso del elegante select de bash.
-4. **Compatibilidad** a la hora de **reiniciar** el **network-manager/NetworkManager** y reestablecer el **wpa_supplicant**.
+3. **Menu interactivo** para elegir la **tarjeta de red** haciendo uso del elegante [select](https://linuxize.com/post/bash-select/) de bash.
+4. **Compatibilidad** a la hora de **reiniciar** el **network-manager/NetworkManager** y el **wpa_supplicant**.
 5. En vez de poner el nombre de la red en un ataque handshake, ponemos el [bssid](https://es.wikipedia.org/wiki/BSSID). Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
 6. En vez de usar rockyou.txt estamos usando la [kaonashi para WiFiWPA](https://github.com/kaonashi-passwords/Kaonashi).
+7. En caso de que alguno de los 2 ataques fallen, se pueden reintentar dentro del flujo del mismo script.
 
 ## El resto de las cosas se mantienen del script original:
 
