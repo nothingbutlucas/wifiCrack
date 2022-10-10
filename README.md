@@ -4,19 +4,20 @@
 
 ## Mejoras con respecto a la version de 2020
 
-1. Actualización de paquetes y programas a 2022
-2. Compatibilidad con distribuciones que manejan apt, pacman, yum o dnf cómo administrador de paquetes
-3. Menu interactivo para elegir la tarjeta de red haciendo uso del elegante select de bash
-4. Compatibilidad a la hora de reiniciar el network-manager/NetworkManager y reestablecer el wpa_supplicant
-5. En vez de poner el nombre de la red en un ataque handshake, ponemos el bssid. Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
+1. Actualización de **paquetes y programas** a sus respectivas versiones de **2022**.
+2. **Compatibilidad** con distribuciones que manejan **apt, pacman, yum o dnf** cómo administrador de paquetes.
+3. **Menu interactivo** para elegir la **tarjeta de red** haciendo uso del elegante select de bash.
+4. **Compatibilidad** a la hora de **reiniciar** el **network-manager/NetworkManager** y reestablecer el **wpa_supplicant**.
+5. En vez de poner el nombre de la red en un ataque handshake, ponemos el [bssid](https://es.wikipedia.org/wiki/BSSID). Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
+6. En vez de usar rockyou.txt estamos usando la [kaonashi para WiFiWPA](https://github.com/kaonashi-passwords/Kaonashi).
 
 ## El resto de las cosas se mantienen del script original:
 
-1. 2 modos de ataque: PKMID y Handshake
-2. Panel de ayuda muy similar
-3. Logica de los ataques
+1. 2 modos de ataque: **PKMID y Handshake**
+2. **Panel de ayuda** muy similar
+3. **Lógica** de los ataques
 
-
+<code>
     Usage: ./wifi_crack.sh -a attack_mode
             a) Attack mode
             Available attack modes:
@@ -34,5 +35,4 @@
     [+] Network manager restarted.
 
     [-] Exiting...
-
-
+</code>
