@@ -83,7 +83,7 @@ function install_hcxdumptool(){
 function dependencies(){
     clear; programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
-    echo -e "${yellow}[*]${nc} Checking dependencies...\n"
+    echo -e "\n${yellow}[*]${nc} Checking dependencies...\n"
     sleep 2
 
     for program in "${programs[@]}"; do
@@ -168,13 +168,17 @@ function handshake(){
 }
 
 function pmkid(){
-    echo -ne "${yellow}[?]${nc} How many minutes do you want to listen? [1-60]: " && read minutes
-    minutes=$((minutes*60))
-    echo -e "${yellow}[*]${nc} Start listening at $(date +%H:%M)...\n"
-    timeout $minutes bash -c "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid"
+    echo -ne "${yellow}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
+    minutes=$(( minutes * 60 ))
+    echo -e "\n${yellow}[*]${nc} Start listening at $(date +%H:%M:%S)..."
+    xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
+    hcxdumptool_xterm_pid=$!
+    sleep ${minutes}
+    kill -9 $hcxdumptool_xterm_pid; wait $hcxdumptool_xterm_pid &>/dev/null
     echo -e "\n${yellow}[*]${nc} Obtaining hashes..."
     hash_name="hashes_pmkid_$(date +%y_%m_%d_%H_%M).hc22000"
-    hcxpcapngtool -o ${hash_name} capture_pmkid; rm -rf capture_pmkid
+    hcxpcapngtool -o ${hash_name} capture_pmkid 1>/dev/null
+    rm -rf capture_pmkid &>/dev/null
     mkdir -p hashes_pmkid
     mv hashes_pmkid* hashes_pmkid &>/dev/null
     sleep 1
@@ -239,7 +243,7 @@ function choose_card(){
     PS3="Network card: "
     select network_card in $(ifconfig | awk '{print $1}' | grep : | sed 's/://'); do
         echo -e "\n${yellow}[*]${nc} Card=${network_card}\n"
-        sleep 0.05
+        sleep 1
         break
     done
 }
