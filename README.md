@@ -11,6 +11,7 @@
 5. En vez de poner el nombre de la red en un ataque handshake, ponemos el [bssid](https://es.wikipedia.org/wiki/BSSID). Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
 6. En vez de usar rockyou.txt estamos usando la [kaonashi para WiFiWPA](https://github.com/kaonashi-passwords/Kaonashi).
 7. En caso de que alguno de los 2 ataques fallen, se pueden reintentar dentro del flujo del mismo script.
+8. En el ataque **PMKID** se pueden seleccionar los minutos de escaneo.
 
 ## El resto de las cosas se mantienen del script original:
 
@@ -37,3 +38,7 @@
 
     [-] Exiting...
 </code>
+
+## Fallos y posibles futuras mejoras
+
+1. Al seleccionar más de 1 minuto en el ataque pmkid el proceso crashea el sistema por completo y solo se puede reiniciar
