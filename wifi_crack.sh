@@ -80,6 +80,18 @@ function install_hcxdumptool(){
     rm -rf hcxdumptool &>/dev/null
 }
 
+function check_kaonashi(){
+    if [[ ! -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
+        echo -e "${yellow}[-]${nc} Kaonashi is not in the system"
+        # Download kaonashi
+        sleep 0.5
+    else
+        echo -e "${green}[+]${nc} Kaonashi found"
+        sleep 0.5
+    fi
+    fi
+}
+
 function dependencies(){
     clear; programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
@@ -117,6 +129,7 @@ function dependencies(){
         fi
     done
     sleep 1
+    check_kaonashi
 }
 
 function select_target_network(){
