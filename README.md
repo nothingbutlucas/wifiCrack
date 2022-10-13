@@ -19,25 +19,25 @@
 2. **Panel de ayuda** muy similar
 3. **Lógica** de los ataques
 
-<code>
-    Usage: ./wifi_crack.sh -a attack_mode
-            a) Attack mode
-            Available attack modes:
-                    PMKID
-                    Handshake
-            h) Help panel
-            Show this help panel
+```bash
+Usage: ./wifi_crack.sh -a attack_mode
+        a) Attack mode
+        Available attack modes:
+                PMKID
+                Handshake
+        h) Help panel
+        Show this help panel
 
-            Example: ./wifi_crack.sh -a PMKID
+        Example: ./wifi_crack.sh -a PMKID
 
-    [-] Taking network card to monitor mode...
-    [+] Network card is now in managed mode.
+[-] Taking network card to monitor mode...
+[+] Network card is now in managed mode.
 
-    [-] Restarting network manager...
-    [+] Network manager restarted.
+[-] Restarting network manager...
+[+] Network manager restarted.
 
-    [-] Exiting...
-</code>
+[-] Exiting...
+```
 
 ## Fallos y posibles futuras mejoras
 
