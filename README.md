@@ -42,3 +42,4 @@ Usage: ./wifi_crack.sh -a attack_mode
 ## Fallos y posibles futuras mejoras
 
 1. Al seleccionar más de 1 minuto en el ataque pmkid el proceso crashea el sistema por completo y solo se puede reiniciar
+2. Añadir la descarga o verificación de que kaonashi exista
