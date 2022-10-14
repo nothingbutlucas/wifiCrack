@@ -294,6 +294,13 @@ function choose_card(){
     done
 }
 
+function wait_for_confirmation(){
+    echo -e "\n${yellow}[?]${nc} Press enter to continue" && read enter
+    if [[ $enter != "" ]]; then
+        exit_script
+    fi
+}
+
 # Main function
 
 tput civis
