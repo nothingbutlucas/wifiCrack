@@ -42,3 +42,9 @@
 ## Fallos y posibles futuras mejoras
 
 1. Al seleccionar más de 1 minuto en el ataque pmkid el proceso crashea el sistema por completo y solo se puede reiniciar
+2. Soporte de ataque con 2 placas de red
+3. Agregar verificación de kaonashi
+4. Añadir posibilidad de capturar pmkid haciendo un ataque de handshake
+5. Rotar la mac entre reintentos
+6. Añadir confirmación del usuario para cada paso que hacemos
+7. Crear un listado de las redes disponibles y añadir un menu selector dentro del script
