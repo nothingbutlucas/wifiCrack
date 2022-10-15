@@ -48,3 +48,4 @@
 5. Rotar la mac entre reintentos
 6. Añadir confirmación del usuario para cada paso que hacemos
 7. Crear un listado de las redes disponibles y añadir un menu selector dentro del script
+8. Flag para saltearte la verificacion de dependencias
