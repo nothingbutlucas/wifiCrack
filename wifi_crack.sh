@@ -140,23 +140,27 @@ function dependencies(){
 }
 
 function select_target_network(){
-    xterm -hold -e "airodump-ng ${network_card} -w airodump-dump --write-interval 1"&
+    echo -e "\n${yellow}[*]${nc} Now we are goind to scan the networks around you..."
+    echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
+    sleep 1
+
+    xterm -hold -e "airodump-ng ${network_card} -w airodump-dump --write-interval 1 --output-format csv"&
     airodump_xterm_pid=$!
 
-    echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${red}enter${nc}"
+    echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${red}enter${nc}"
+    echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${red}enter${nc}..."
     wait_for_confirmation
     kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null
 
-    networks="|________BSSID_______|________ESSID_______|CHANNEL|POWER|,"
+    sed -i '1,2d' airodump-dump-01.csv
+    sed -i '1,/Station MAC/!d' airodump-dump-01.csv
+
+    networks="|______BSSID______|________ESSID_______|CHANNEL|POWER|SECURITY|,"
     while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
-        if [[ $bssid != "BSSID" ]] && [[ $bssid != "" ]] && [[ $essid != "" ]]; then
-            parsed_essid=$(echo ${essid} | sed 's/\<//' | sed 's/\>//')
-            length_essid=$(echo ${parsed_essid} | wc -c)
-            if [ $length_essid -lt 20 ]; then
-                parsed_essid="${parsed_essid}$(printf '%*s' $(( 20-$length_essid )))"
-                echo $parsed_essid
-            fi
-            networks="${networks}| ${bssid} | ${parsed_essid::18} |${channel}|${power}|,"
+        if [[ $privacy != " OPN" ]]; then
+            empty_spaces="                    "
+            parsed_essid="${essid:0:20}${empty_spaces:0:$((20 - ${#essid}))}"
+            networks="${networks}|${bssid}|${parsed_essid::20}|${channel}|${power}|${privacy},"
         fi
     done < airodump-dump-01.csv
 
@@ -168,17 +172,21 @@ function select_target_network(){
     select target_network in $(cat airodump-dump-01.parsed); do
         if [[ $target_network == "" ]]; then
             echo -e "${red}[-]${nc} Invalid option"
-            select_target_network
         else
             break
         fi
     done
+    unset IFS
+    echo $target_network
+    ap_bssid=$(echo $target_network | cut -d'|' -f2)
+    ap_channel=$(echo $target_network | cut -d'|' -f4)
+    echo -e "\n${green}[+]${nc} You choose ${ap_bssid} on channel ${ap_channel} with the name ${ap_essid}"
     rm -rf airodump*
     exit_script
 }
 
 function handshake(){
-    echo -e "${yellow}[*]${nc} Listening network traffic..."
+    echo -e "${yellow}[*]${nc} Listening network traffic of ${ap_bssid} on channel ${ap_channel}"
     xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}"&
     airodump_filter_xterm_pid=$!
 
