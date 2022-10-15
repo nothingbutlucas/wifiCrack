@@ -46,23 +46,23 @@ function enable_monitor_mode(){
     fi
     echo -e "\n${good}[+]${nc} Network card to monitor mode"; sleep 0.5
 
-    echo -e "\n${doing}[~]${nc} Killing processes that could interfere"
+    echo -e "\n${doing}[~]${nc} Killing processes that could interfer"; sleep 0.5
     killall wpa_supplicant dhclient 2>/dev/null
     airmon-ng check kill &>/dev/null
-    echo -e "\n${good}[+]${nc} Processes killed correctly"
+    echo -e "\n${good}[+]${nc} Processes killed correctly"; sleep 0.5
 
-    echo -e "\n${doing}[~]${nc} Annonymizing MAC address"
+    echo -e "\n${doing}[~]${nc} Annonymizing MAC address"; sleep 0.5
     macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
 
-    echo -e "\n${good}[+]${nc} New MAC address: $macaddress\n"
+    echo -e "\n${good}[+]${nc} New MAC address: $macaddress"; sleep 0.5
 }
 
-function exit_script() {
+function exit_script(){
     if [ "$we_attack" = "0" ]; then
         echo -e "\n${warn}[*]${nc} We are gonna to exit the script..."
         echo -e "\n${info}[·]${nc} Managed mode allows you to navigate into internet and that stuff. If had finished your attacks it's likeable to bring the network back to managed mode."
         echo -e "\n${info}[·]${nc} If you are cracking some password bring the network card to managed mode, dosen't affect on anything"
-        echo -e "\n${ask}[?]${nc} Do you want to bring the network back to managed mode? [y/n]"
+        echo -ne "\n${ask}[?]${nc} Do you want to bring the network back to managed mode? [y/n]: "
         read answer
         if [ "${answer,,}" = "y" ]; then
             enable_managed_mode
@@ -74,7 +74,7 @@ function exit_script() {
     tput cnorm; exit 0
 }
 
-function ctrl_c() {
+function ctrl_c(){
     exit_script
 }
 
@@ -157,25 +157,27 @@ function check_kaonashi(){
 
 function install_all_missing_dependencies(){
     $package_manager &> /dev/null
-    if [[ $program == "hcxdumptool" ]] && [[ $package_manager != "pacman" ]]; then
-        install_hcxdumptool
-    elif [[ $program == "hcxdumptool" ]] && [[ $package_manager == "pacman" ]]; then
-        $package_manager install -Sy $program &> /dev/null
-    fi
-    if [ "$(echo $?)" == "0" ]; then
-        echo -e "${doing}[~]${nc} Installing $program with $package_manager"
-        sleep 2
-        echo -e "${grey}$ sudo $package_manager install $program${nc}"
-        sudo $package_manager install $program -${confirmation} 1>/dev/null
-        if [ "$(echo $?)" == "0" ]; then
-            echo -e "${good}[+]${nc} $program has been installed"
-            installed_programs+=($program)
-        else
-            echo -e "${wrong}[-]${nc} $program could not be installed with $installer. Please, install it manually"
+    for program in "${missing_dependencies[@]}"; do
+        if [[ $program == "hcxdumptool" ]] && [[ $package_manager != "pacman" ]]; then
+            install_hcxdumptool
+        elif [[ $program == "hcxdumptool" ]] && [[ $package_manager == "pacman" ]]; then
+            $package_manager install -Sy $program &> /dev/null
         fi
-    else
-        echo -e "${wrong}[-]${nc} Could not install $program because I could not find a package manager on your system. Please, install it manually"
+        if [ "$(echo $?)" == "0" ]; then
+            echo -e "\n${doing}[~]${nc} Installing $program with $package_manager"
+            sleep 2
+            echo -e "${grey}$ sudo $package_manager install $program${nc}"
+            sudo $package_manager install $program -${confirmation} 1>/dev/null
+            if [ "$(echo $?)" == "0" ]; then
+                echo -e "${good}[+]${nc} $program has been installed"
+                installed_programs+=($program)
+            else
+                echo -e "${wrong}[-]${nc} $program could not be installed with $installer. Please, install it manually"
+            fi
+        else
+            echo -e "${wrong}[-]${nc} Could not install $program because I could not find a package manager on your system. Please, install it manually"
     fi
+    done
 }
 
 function see_all_dependencies(){
@@ -188,6 +190,7 @@ function see_all_dependencies(){
     echo -e "${info}[~]${nc} For all the attacks"
     echo -e "\t${info}[~]${nc} macchanger -> For changing your MAC address and annonymize yourself"
     echo -e "\t${info}[~]${nc} kaonashi -> For cracking the handshakes and PMKID"
+    exit_script
 }
 
 function dependencies(){
@@ -213,11 +216,11 @@ function dependencies(){
 
     check_kaonashi
 
-    if [ ${#missing_dependencies} -eq 0 ]; then
-        echo -e "${purple}[?]${nc} Do you want to install the missing dependencies? [y/n]"
-        echo -e "${blue}[·]${nc} My recommendation is to install them but by yourself, you never know who make the package you are installing..."
+    if [ ${#missing_dependencies} -gt 0 ]; then
+        echo -e "\n${blue}[·]${nc} My recommendation is to install them but by yourself, you never know who make the package you are installing..."
         echo -e "${blue}[·]${nc} If you want to install them by yourself, just press n, install the dependencies and later run the script again (Make sure that the dependencies are somewhere on your path)"
         echo -e "${blue}[·]${nc} If you are not so paranoid, just press y and let me install them for you"
+        echo -ne "\n${purple}[?]${nc} Do you want to install the missing dependencies? [y/n]: "
         read confirmation
         if [[ ${confirmation,,} == "y" ]]; then
             check_installer_manager
@@ -229,13 +232,13 @@ function dependencies(){
         fi
     fi
     programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
-    if [[ ${installed_programs} == ${programs} ]]; then
+    if [ ${#installed_programs} -eq ${#programs} ]; then
         echo -e "\n${good}[+]${nc} All dependencies are installed"
         sleep 1
     else
-        echo -e "\n${wrong}[-]${nc} Some dependencies are not installed"
+        echo -e "\n${warn}[*]${nc} Some dependencies are not installed"
         for dependency in "${missing_dependencies[@]}"; do
-            echo -e "${wrong}[-]${nc} $dependency is not installed"
+            echo -e "${warn}[*]${nc} $dependency is not installed"
         done
         echo -e "${info}[~]${nc} Please, install them manually and run the script again"
         see_all_dependencies
@@ -255,7 +258,7 @@ function select_target_network(){
     echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${good}enter${nc}"
     echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${good}enter${nc}..."
     wait_for_confirmation
-    kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null
+    kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null ; sleep 2
 
     sed -i '1,2d' airodump-dump-01.csv
     sed -i '1,/Station MAC/!d' airodump-dump-01.csv
@@ -264,12 +267,15 @@ function select_target_network(){
     while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
         if [[ $privacy != " OPN" ]]; then
             dots="····················"
+            essid=$(echo $essid | sed 's/\"//g' | sed 's/,//g' | sed 's/ //g')
             essid="${essid}${dots}"
+            channel="$(echo $channel | sed 's/ //g')"
             channel="${channel}${dots}"
-            power="$(100 - power)"
+            power="$((power + 100))"
             power="${power} %${dots}"
+            privacy="$(echo $privacy | sed 's/ //g')"
             privacy="${privacy}${dots}"
-            networks="${networks}|${bssid}|${essid::20}|${channel::7}|${power::6}|${privacy::8}|,"
+            networks="${networks}|${bssid}|${essid::20}|${channel::7}|${power::5}|${privacy::8}|,"
         fi
     done < airodump-dump-01.csv
 
@@ -286,7 +292,6 @@ function select_target_network(){
         fi
     done
     unset IFS
-    echo $target_network
     ap_bssid=$(echo $target_network | cut -d'|' -f2 | sed 's/·//g')
     ap_channel=$(echo $target_network | cut -d'|' -f4 | sed 's/ //g' | sed 's/·//g')
     ap_essid=$(echo $target_network | cut -d'|' -f3)
@@ -438,7 +443,7 @@ function choose_card(){
 }
 
 function wait_for_confirmation(){
-    echo -e "\n${ask}[?]${nc} Press ${ask}enter${nc} to continue..." && read enter
+    echo -ne "\n${ask}[?]${nc} Press ${ask}enter${nc} to continue..." && read enter
     if [[ $enter != "" ]]; then
         exit_script
     fi
@@ -448,10 +453,11 @@ function wait_for_confirmation(){
 tput civis
 we_attack=1
 echo ""
-while getopts ":a:h" arg; do
+while getopts ":a:n:hd" arg; do
     case $arg in
         a) attack_mode=$OPTARG ;;
         n) network_card_mode=$OPTARG ;;
+        d) see_all_dependencies ;;
         h) help_panel ;;
         ?) echo -e "${wrong}[!]${nc}Invalid option: -$OPTARG\n"; help_panel ;;
     esac
