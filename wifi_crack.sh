@@ -82,10 +82,15 @@ function install_hcxdumptool(){
 }
 
 function check_kaonashi(){
-    if [[ -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
+    if [[ ! -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
         echo -e "${yellow}[-]${nc} Kaonashi is not in the system"
-        # Download kaonashi
+		echo -e "${yellow}[-]${nc} Downloading kaonashi .torrent file to the current directory"
+        echo -e "${yellow}[-]${nc} Please, download the torrent and extract the file to /usr/share/wordlists/"
+        echo -e "${yellow}[-]${nc} After that, run the script again"
+        mkdir -p /usr/share/wordlists/
+        wget https://github.com/kaonashi-passwords/Kaonashi/blob/master/wordlists/kaonashiWPA100M.7z.torrent &>/dev/null
         sleep 0.5
+        exit_script
     else
         echo -e "${green}[+]${nc} Kaonashi found"
         sleep 0.5
