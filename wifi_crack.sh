@@ -1,27 +1,9 @@
 #!/usr/bin/bash
 
+source config.sh
+source dependencies.sh
+
 trap ctrl_c INT
-
-# Colours and uses
-
-red='\033[0;31m'    # Something went wrong
-green='\033[0;32m'  # Something went well
-yellow='\033[0;33m' # Warning
-blue='\033[0;34m'   # Info
-purple='\033[0;35m' # When asking something to the user
-cyan='\033[0;36m'   # Something is happening
-grey='\033[0;37m'   # Show a command to the user
-nc='\033[0m'        # No Color
-
-wrong=${red}
-good=${green}
-warn=${yellow}
-info=${blue}
-ask=${purple}
-doing=${cyan}
-cmd=${grey}
-
-wordlist_path="/usr/share/wordlists/SecLists/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt"
 
 function enable_managed_mode() {
 	echo -e "\n${doing}[~]${nc} Taking network card to managed mode..."
@@ -94,7 +76,7 @@ function exit_script() {
 		fi
 	fi
 	echo -e "\n${good}[+]${nc} Exiting..."
-	tput cnorm
+	tput cnorm 2>/dev/null
 	exit 0
 }
 
@@ -119,165 +101,14 @@ function help_panel() {
 	exit_script
 }
 
-function check_installer_manager() {
-	confirmation="y"
-	managers=(apt-get apt yum dnf zypper pacman emerge urpmi flatpak snap snapd pkg)
-	available_managers=()
-	for manager in "${managers[@]}"; do
-		if command -v $manager &>/dev/null; then
-			available_managers+=($manager)
-		fi
-	done
-	if [ "${#available_managers[@]}" -eq "0" ]; then
-		echo -e "\n${warn}[!]${nc} No package manager found"
-	else
-		if [ "${#available_managers[@]}" -eq "1" ]; then
-			package_manager=${available_managers[0]}
-		else
-			echo -e "\n${warn}[!]${nc} More than one package manager found"
-			echo -e "\n${info}[·]${nc} Available package managers:"
-			PS3="[?] Select a package manager: "
-			select installer in "${available_managers[@]}"; do
-				if [ -n "$installer" ]; then
-					package_manager=$installer
-					break
-				fi
-			done
-		fi
-	fi
-}
-
-function install_hcxdumptool() {
-	echo -e "${doing}[~]${nc} Installing hcxdumptool..."
-	sleep 0.5
-	if [[ $package_manager == "apt" ]]; then
-		apt install -y libcurl4-openssl-dev libssl-dev pkg-config &>/dev/null
-	fi
-	git clone https://github.com/ZerBea/hcxdumptool.git &>/dev/null
-	cd hcxdumptool
-	make 1>/dev/null
-	make install 1>/dev/null
-	cd ..
-	rm -rf hcxdumptool &>/dev/null
-	if command -v hcxdumptool &>/dev/null; then
-		installed_programs+=($program)
-	fi
-}
-
-function check_kaonashi() {
-	if [[ ! -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
-		echo -e "${info}[·]${nc} kaonashi is not in the system"
-		echo -e "${info}[·]${nc} Downloading kaonashi .torrent file to the current directory"
-		echo -e "${info}[·]${nc} Please, download the torrent and extract the file to /usr/share/wordlists/"
-		echo -e "${info}[·]${nc} After that, run the script again"
-		mkdir -p /usr/share/wordlists/
-		wget https://github.com/kaonashi-passwords/Kaonashi/blob/master/wordlists/kaonashiWPA100M.7z.torrent &>/dev/null
-		sleep 0.5
-	else
-		echo -e "${good}[+]${nc} kaonashi found"
-		sleep 0.5
-	fi
-}
-
-function install_all_missing_dependencies() {
-	$package_manager &>/dev/null
-	for program in "${missing_dependencies[@]}"; do
-		if [[ $program == "hcxdumptool" ]] && [[ $package_manager != "pacman" ]]; then
-			install_hcxdumptool
-		elif [[ $program == "hcxdumptool" ]] && [[ $package_manager == "pacman" ]]; then
-			$package_manager install -Sy $program &>/dev/null
-		fi
-		if [ "$(echo $?)" == "0" ]; then
-			echo -e "\n${doing}[~]${nc} Installing $program with $package_manager"
-			sleep 2
-			echo -e "${cmd}$ sudo $package_manager install $program${nc}"
-			sudo $package_manager install $program -${confirmation} 1>/dev/null
-			if [ "$(echo $?)" == "0" ]; then
-				echo -e "${good}[+]${nc} $program has been installed"
-				installed_programs+=($program)
-			else
-				echo -e "${wrong}[-]${nc} $program could not be installed with $installer. Please, install it manually"
-			fi
-		else
-			echo -e "${wrong}[-]${nc} Could not install $program because I could not find a package manager on your system. Please, install it manually"
-		fi
-	done
-}
-
-function see_all_dependencies() {
-	echo -e "${info}[~]${nc} For handshakes attack:"
-	echo -e "\t${info}[~]${nc} aircrack-ng -> For listing the networks and capturing the handshake"
-	echo -e "\t${info}[~]${nc} tshark -> For reading the handshake file and verify it"
-	echo -e "${info}[~]${nc} For PMKID attack:"
-	echo -e "\t${info}[~]${nc} hcxdumptool -> For capturing the PMKID"
-	echo -e "\t${info}[~]${nc} hashcat -> For cracking the PMKID"
-	echo -e "${info}[~]${nc} For all the attacks"
-	echo -e "\t${info}[~]${nc} macchanger -> For changing your MAC address and annonymize yourself"
-	echo -e "\t${info}[~]${nc} kaonashi -> For cracking the handshakes and PMKID"
-	echo -e "\t${info}[~]${nc} gum -> For better UI"
-	exit_script
-}
-
-function dependencies() {
-	#clear;
-	programs=(aircrack-ng macchanger hcxdumptool hashcat tshark gum)
-
-	echo -e "${doing}[~]${nc} Checking dependencies...\n"
-	sleep 0.5
-
-	installed_programs=()
-	missing_dependencies=()
-
-	for program in "${programs[@]}"; do
-		if ! command -v $program &>/dev/null; then
-			echo -e "${yellow}[*] ${nc}$program could not be found"
-			missing_dependencies+=($program)
-		else
-			echo -e "${good}[+]${nc} $program found"
-			sleep 0.5
-			installed_programs+=($program)
-		fi
-	done
-
-	check_kaonashi
-
-	if [ ${#missing_dependencies} -gt 0 ]; then
-		echo -e "\n${blue}[·]${nc} My recommendation is to install them but by yourself, you never know who make the package you are installing..."
-		echo -e "${blue}[·]${nc} If you want to install them by yourself, just press n, install the dependencies and later run the script again (Make sure that the dependencies are somewhere on your path)"
-		echo -e "${blue}[·]${nc} If you are not so paranoid, just press y and let me install them for you"
-		echo -ne "\n${purple}[?]${nc} Do you want to install the missing dependencies? [y/n]: "
-		read confirmation
-		if [[ ${confirmation,,} == "y" ]]; then
-			check_installer_manager
-			install_all_missing_dependencies
-		else
-			echo -e "${green}[+]${nc} Ok, I will not install the missing dependencies"
-			echo -e "${green}[+]${nc} Great for you! You are so paranoid that you do not trust me to install the missing dependencies for you, but no so paranoid to run this script with sudo xD"
-			sleep 0.5
-		fi
-	fi
-	programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
-	if [ ${#installed_programs} -eq ${#programs} ]; then
-		echo -e "\n${good}[+]${nc} All dependencies are installed"
-		sleep 1
-	else
-		echo -e "\n${warn}[*]${nc} Some dependencies are not installed"
-		for dependency in "${missing_dependencies[@]}"; do
-			echo -e "${warn}[*]${nc} $dependency is not installed"
-		done
-		echo -e "${info}[~]${nc} Please, install them manually and run the script again"
-		see_all_dependencies
-		sleep 1
-		exit_script
-	fi
-}
-
 function select_target_network() {
 	echo -e "\n${yellow}[*]${nc} Now we are going to scan the networks around you..."
 	echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
 	sleep 1
 
-	xterm -hold -e "airodump-ng ${network_card} -w airodump-dump --write-interval 1 --output-format csv" &
+	airodump_file="airodump-dump"
+
+	xterm -hold -e "airodump-ng ${network_card} -w ${airodump_file} --write-interval 1 --output-format csv" &
 	airodump_xterm_pid=$!
 
 	echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${good}enter${nc}"
@@ -287,8 +118,9 @@ function select_target_network() {
 	wait $airodump_xterm_pid &>/dev/null
 	sleep 2
 
-	sed -i '1,2d' airodump-dump-01.csv
-	sed -i '1,/Station MAC/!d' airodump-dump-01.csv
+	sed -i '1,2d' ${airodump_file}-01.csv
+	sed -i '1,/Station MAC/!d' ${airodump_file}-01.csv
+	sed -i '1,/Station MAC/d' ${airodump_file}-01.csv
 
 	networks="|······BSSID······|········ESSID·······|CHANNEL|POWER|SECURITY|,"
 	while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
@@ -304,14 +136,14 @@ function select_target_network() {
 			privacy="${privacy}${dots}"
 			networks="${networks}|${bssid}|${essid::20}|${channel::7}|${power::5}|${privacy::8}|,"
 		fi
-	done <airodump-dump-01.csv
+	done <${airodump_file}-01.csv
 
-	echo $networks >airodump-dump-01.parsed
+	echo $networks >${airodump_file}-01.parsed
 
 	echo -e "\n${good}[+]${nc} Scanned networks"
 	PS3="[?] Select the target network: "
 	IFS=,
-	select target_network in $(cat airodump-dump-01.parsed); do
+	select target_network in $(cat ${airodump_file}-01.parsed); do
 		if [[ $target_network == "" ]]; then
 			echo -e "${wrong}[-]${nc} Invalid option"
 		else
@@ -496,7 +328,7 @@ function wait_for_confirmation() {
 }
 # Main function
 
-tput civis
+tput civis 2>/dev/null
 we_attack=1
 echo ""
 while getopts ":a:n:hd" arg; do
