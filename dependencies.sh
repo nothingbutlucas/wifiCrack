@@ -7,8 +7,8 @@ function check_installer_manager() {
 	managers=(apt-get apt yum dnf zypper pacman emerge urpmi flatpak snap snapd pkg)
 	available_managers=()
 	for manager in "${managers[@]}"; do
-		if command -v $manager &>/dev/null; then
-			available_managers+=($manager)
+		if command -v "$manager" &>/dev/null; then
+			available_managers+=("$manager")
 		fi
 	done
 	if [ "${#available_managers[@]}" -eq "0" ]; then
@@ -37,13 +37,13 @@ function install_hcxdumptool() {
 		apt install -y libcurl4-openssl-dev libssl-dev pkg-config &>/dev/null
 	fi
 	git clone https://github.com/ZerBea/hcxdumptool.git &>/dev/null
-	cd hcxdumptool
+	cd hcxdumptool || return
 	make 1>/dev/null
 	make install 1>/dev/null
 	cd ..
 	rm -rf hcxdumptool &>/dev/null
 	if command -v hcxdumptool &>/dev/null; then
-		installed_programs+=($program)
+		installed_programs+=("$program")
 	fi
 }
 
@@ -65,16 +65,16 @@ function install_all_missing_dependencies() {
 		if [[ $program == "hcxdumptool" ]] && [[ $package_manager != "pacman" ]]; then
 			install_hcxdumptool
 		elif [[ $program == "hcxdumptool" ]] && [[ $package_manager == "pacman" ]]; then
-			$package_manager install -Sy $program &>/dev/null
+			$package_manager install -Sy "$program" &>/dev/null
 		fi
 		if [ "$(echo $?)" == "0" ]; then
 			echo -e "\n${doing}[~]${nc} Installing $program with $package_manager"
 			sleep 0.2
 			echo -e "${cmd}$ sudo $package_manager install $program${nc}"
-			sudo $package_manager install $program -${confirmation} 1>/dev/null
+			sudo "$package_manager" install "$program" -"${confirmation}" 1>/dev/null
 			if [ "$(echo $?)" == "0" ]; then
 				echo -e "${good}[+]${nc} $program has been installed"
-				installed_programs+=($program)
+				installed_programs+=("$program")
 			else
 				echo -e "${wrong}[-]${nc} $program could not be installed with $installer. Please, install it manually"
 			fi
