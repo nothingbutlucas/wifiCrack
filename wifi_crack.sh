@@ -48,9 +48,9 @@ function enable_monitor_mode() {
 }
 
 function kill_remaining_processes() {
-	kill -9 $(ps aux | grep -i "airodump-ng" | awk '{print $2}') &>/dev/null
-	kill -9 $(ps aux | grep -i "aireplay-ng" | awk '{print $2}') &>/dev/null
-	kill -9 $(ps aux | grep -i "hcxdumptool" | awk '{print $2}') &>/dev/null
+	kill -9 "$(pgrep "airodump-ng")" &>/dev/null
+	kill -9 "$(pgrep "aireplay-ng")" &>/dev/null
+	kill -9 "$(pgrep "hcxdumptool")" &>/dev/null
 }
 
 function exit_script() {
@@ -257,13 +257,9 @@ function pmkid() {
 }
 
 function attack() {
-	#clear
 	choose_network_card
-
 	echo -e "${info}[·]${nc} Starting ${attack_mode} attack with $network_card network card"
-
 	enable_monitor_mode
-
 	if [[ "${attack_mode,,}" == "handshake" ]]; then
 		select_target_network
 	elif [[ "${attack_mode,,}" == "pmkid" ]]; then
@@ -272,7 +268,6 @@ function attack() {
 		echo -e "${wrong}[-]${nc} Invalid attack mode"
 		exit_script
 	fi
-
 }
 
 function choose_network_card() {
@@ -306,7 +301,6 @@ while getopts ":a:n:hd" arg; do
 done
 
 if [ "$(id -u)" == "0" ]; then
-
 	if [[ $network_card_mode == "monitor" ]]; then
 		choose_network_card
 		enable_monitor_mode
