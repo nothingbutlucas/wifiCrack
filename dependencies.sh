@@ -69,7 +69,7 @@ function install_all_missing_dependencies() {
 		fi
 		if [ "$(echo $?)" == "0" ]; then
 			echo -e "\n${doing}[~]${nc} Installing $program with $package_manager"
-			sleep 2
+			sleep 0.2
 			echo -e "${cmd}$ sudo $package_manager install $program${nc}"
 			sudo $package_manager install $program -${confirmation} 1>/dev/null
 			if [ "$(echo $?)" == "0" ]; then
@@ -124,7 +124,7 @@ function dependencies() {
 	programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 	if [ ${#installed_programs} -eq ${#programs} ]; then
 		gum style "All dependencies are installed"
-		sleep 2
+		sleep 0.2
 	else
 		echo -e "\n${warn}[*]${nc} Some dependencies are not installed"
 		for dependency in "${missing_dependencies[@]}"; do
