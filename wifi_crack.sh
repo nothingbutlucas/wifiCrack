@@ -91,7 +91,7 @@ function help_panel() {
 }
 
 function do_not_close_sign() {
-	gum style --border-foreground="1" "Do not close the new terminal, the script will close it automagically later"
+	gum style --border-foreground="#F6D30C" "Do not close the new terminal, the script will close it automagically later"
 }
 
 function user_sleep() {
@@ -102,7 +102,8 @@ function user_sleep() {
 function delete_temp_files() {
 	rm -rf airodump*
 	rm -rf capture_*
-	rm -rf "${handshake_file}"
+	rm -rf "$handshake_file"
+	rm -rf "$networks_table_file"
 }
 
 function select_target_network() {
@@ -110,6 +111,8 @@ function select_target_network() {
 	echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
 
 	airodump_file="airodump-dump"
+
+	rm -rf airodump
 
 	xterm -hold -e "airodump-ng ${network_card} -w ${airodump_file} --write-interval 1 --output-format csv" &
 	airodump_xterm_pid=$!
@@ -120,25 +123,38 @@ function select_target_network() {
 	kill -9 $airodump_xterm_pid
 	wait $airodump_xterm_pid &>/dev/null
 
-	cat ${airodump_file}-01.csv | grep -Ev ", OPN, " >airodump-dump-filtered-open.csv
+	formated_airodump="airodump-dump-filtered-open.csv"
+
+	cat ${airodump_file}*.csv | grep -Ev ", OPN, " >$formated_airodump
 	# Eliminamos las primera linea del archivo
-	sed -i '1,2d' ${airodump_file}-01.csv
+	sed -i '1,1d' ${formated_airodump}
 	# Eliminamos las lineas donde se encuentran los clientes, para dejar solo las redes
-	sed -i '/Station MAC/,$d' ${airodump_file}-01.csv
+	sed -i '/Station MAC/,$d' ${formated_airodump}
 	# Atajamos posibles typos que puedan haber
-	sed -i 's/2,4/2.4/g' ${airodump_file}-01.csv
-	sed -i 's/5,8/5.8/g' ${airodump_file}-01.csv
+	sed -i 's/2,4/2.4/g' ${formated_airodump}
+	sed -i 's/5,8/5.8/g' ${formated_airodump}
 
-	network_list=()
-	while IFS= read -r line; do
-		network_list+=("$line")
-	done < <(cut -d ',' -f14,4,6,8,1 airodump-dump-filtered-open.csv)
+	# network_list=()
+	# while IFS= read -r line; do
+	# 	network_list+=("$line")
+	# done < <(cut -d ',' -f14,4,6,8,1,10 airodump-dump-filtered-open.csv)
 
-	target_network=$(gum choose "${network_list[@]}")
+	networks_table_file="networks_table.csv"
+	cut -d ',' -f14,4,6,8,1,9 $formated_airodump | awk 'BEGIN{FS=OFS=","} {print $1,$2,$3,$4,$5+100,$6}' | sed '1s/100/PWR/' >>$networks_table_file
+	target_network=$(gum table -f $networks_table_file -w 17,7,7,7,7,30)
 
-	ssid="${target_network##*, }"
-	bssid="${target_network%%,*}"
-	channel="$(echo "$target_network" | awk -F', ' '{print $2}')"
+	# target_network_string=$(echo "$target_network" | sed 's/"//g')
+	target_network_string=${target_network//\"/}
+
+	ssid="$(echo "$target_network_string" | awk -F',' '{print $6}')"
+	ssid=${ssid##*( )}
+	ssid=${ssid%%*( )}
+	bssid="$(echo "$target_network_string" | awk -F',' '{print $1}')"
+	bssid=${bssid##*( )}
+	bssid=${bssid%%*( )}
+	channel=$(echo "$target_network_string" | awk -F',' '{print $2}')
+	channel=${channel##*( )}
+	channel=${channel%%*( )}
 	handshake
 }
 
@@ -151,7 +167,7 @@ function eapol_has_captured() {
 }
 
 function handshake() {
-	gum style "Attacking $ssid"
+	gum style "Attacking network $ssid"
 	echo -e "\n${doing}[~]${nc} Listening network traffic of ${bssid} on channel ${channel}"
 	user_sleep
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
@@ -169,7 +185,7 @@ function handshake() {
 	gum spin --timeout=10s --title="Waiting deauthentication for 10 seconds..." sleep 10
 	kill -9 $aireplay_xterm_pid
 	wait $aireplay_xterm_pid &>/dev/null
-	echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended"
+	echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended\n"
 
 	handshake_wait=60
 	gum spin --timeout=${handshake_wait}s --title="Waiting handshake for ${handshake_wait} seconds..." sleep ${handshake_wait}

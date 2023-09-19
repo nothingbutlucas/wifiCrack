@@ -55,7 +55,6 @@ function check_kaonashi() {
 		echo -e "${info}[·]${nc} After that, run the script again"
 		mkdir -p /usr/share/wordlists/
 		wget https://github.com/kaonashi-passwords/Kaonashi/blob/master/wordlists/kaonashiWPA100M.7z.torrent &>/dev/null
-		sleep 0.5
 	fi
 }
 
@@ -110,7 +109,6 @@ function dependencies() {
 		else
 			installed_programs+=("$program")
 		fi
-		sleep 0.2
 	done
 
 	check_kaonashi
@@ -124,7 +122,6 @@ function dependencies() {
 	programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 	if [ ${#installed_programs} -eq ${#programs} ]; then
 		gum style "All dependencies are installed"
-		sleep 0.2
 	else
 		echo -e "\n${warn}[*]${nc} Some dependencies are not installed"
 		for dependency in "${missing_dependencies[@]}"; do
@@ -132,7 +129,6 @@ function dependencies() {
 		done
 		echo -e "${info}[~]${nc} Please, install them manually and run the script again"
 		see_all_dependencies
-		sleep 0.1
 		exit_script
 	fi
 }
