@@ -160,10 +160,7 @@ function select_target_network() {
 
 function eapol_has_captured() {
 	handshake_file="handshake.txt"
-	tshark -i wlan0 -Y "eapol" -w - 2>/dev/null | tee "${handshake_file}" | grep -q "Message 1 of 4" &&
-		grep -q "Message 2 of 4" "${handshake_file}" &&
-		grep -q "Message 3 of 4" "${handshake_file}" &&
-		grep -q "Message 4 of 4" "${handshake_file}"
+	tshark -r "capture_$bssid-01.cap" -Y "eapol" 2>/dev/null | tee ${handshake_file} | grep -q "Message 1 of 4" ${handshake_file} && grep -q "Message 2 of 4" ${handshake_file} && grep -q "Message 3 of 4" ${handshake_file} && grep -q "Message 4 of 4" ${handshake_file}
 }
 
 function deauthenticate_all_clients() {
