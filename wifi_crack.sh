@@ -140,7 +140,7 @@ function select_target_network() {
 	# done < <(cut -d ',' -f14,4,6,8,1,10 airodump-dump-filtered-open.csv)
 
 	networks_table_file="networks_table.csv"
-	cut -d ',' -f14,4,6,8,1,9 $formated_airodump | awk 'BEGIN{FS=OFS=","} {print $1,$2,$3,$4,$5+100,$6}' | sed '1s/100/PWR/' >>$networks_table_file
+	cut -d ',' -f14,4,6,8,1,9 $formated_airodump | awk 'BEGIN{FS=OFS=","} {print $1,$2,$3,$4,$5+100,$6}' | sed '1s/100/PWR/' | head -n -1 >>$networks_table_file
 	target_network=$(gum table -f $networks_table_file -w 17,7,7,7,7,30)
 
 	# target_network_string=$(echo "$target_network" | sed 's/"//g')
