@@ -267,6 +267,7 @@ function pmkid() {
 }
 
 function attack() {
+	delete_temp_files
 	choose_network_card
 	echo -e "${info}[·]${nc} Starting ${attack_mode} attack with $network_card network card"
 	enable_monitor_mode
