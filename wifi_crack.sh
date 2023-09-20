@@ -5,6 +5,10 @@ source dependencies.sh
 
 trap ctrl_c INT
 
+function ctrl_c() {
+	exit_script
+}
+
 function enable_managed_mode() {
 	echo -e "\n${doing}[~]${nc} Taking network card to managed mode..."
 	user_sleep
@@ -67,10 +71,6 @@ function exit_script() {
 	echo -e "\n${good}[+]${nc} Exiting..."
 	tput cnorm 2>/dev/null
 	exit 0
-}
-
-function ctrl_c() {
-	exit_script
 }
 
 function help_panel() {
@@ -289,6 +289,10 @@ function choose_network_card() {
 	we_attack=0
 }
 
+function choose_type_of_attack() {
+	attack_mode=$(gum choose "PMKID" "Handshake")
+}
+
 function wait_for_confirmation() {
 	echo -ne "\n${ask}[?]${nc} Press ${ask}any key${nc} to continue..." && read
 }
@@ -322,8 +326,7 @@ if [ "$(id -u)" == "0" ]; then
 	fi
 
 	if [ -z "$attack_mode" ]; then
-		echo -e "${wrong}[!]${nc} Missing arguments!\n"
-		help_panel
+		choose_type_of_attack
 	fi
 
 	dependencies
