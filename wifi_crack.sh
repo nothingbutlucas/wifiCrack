@@ -259,12 +259,12 @@ function pmkid() {
 		echo -e "\n${good}[+]${nc} Hashes obtained"
 		user_sleep
 		echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
+		do_not_close_sign
 		user_sleep
-		echo -e "\n${yellow}[*]${nc} A new terminal will be opened to show the progress of the attack"
 		xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} $wordlist_path" &
 		hashcat_xterm_pid=$!
 		echo -e "\n${yellow}[*]${nc} Remember to kill this terminal when the cracking were finished"
-		echo -e "\n${info}[·]${nc} Use the following command: ${cmd}sudo kill -9 $hashcat_xterm_pid${nc}"
+		gum style "Use the following command: sudo kill -9 $hashcat_xterm_pid"
 	else
 		echo -e "\n${wrong}[!]${nc} The hashes are not captured :("
 		gum confirm --default=False "Do you want to retry?" && delete_temp_files && pmkid
