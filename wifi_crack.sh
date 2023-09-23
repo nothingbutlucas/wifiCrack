@@ -212,7 +212,7 @@ function handshake() {
 			kill -9 $airodump_filter_xterm_pid
 			wait $airodump_filter_xterm_pid &>/dev/null
 			echo -e "\n${wrong}[-]${nc} The failed captures will be deleted"
-			gum confirm "Do you want to try again? on the same network?" && handshake || gum confirm "Do you want to try again on another network?" && select_target_network
+			gum confirm "Do you want to try again? on the same network?" && delete_temp_files && handshake || gum confirm "Do you want to try again on another network?" && delete_temp_files && select_target_network
 		fi
 	fi
 
@@ -264,7 +264,7 @@ function pmkid() {
 		echo -e "\n${info}[·]${nc} Use the following command: ${cmd}sudo kill -9 $hashcat_xterm_pid${nc}"
 	else
 		echo -e "\n${wrong}[!]${nc} The hashes are not captured :("
-		gum confirm "Do you want to retry?" && pmkid
+		gum confirm "Do you want to retry?" && delete_temp_files && pmkid
 	fi
 }
 
