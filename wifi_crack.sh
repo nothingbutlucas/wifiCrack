@@ -236,7 +236,7 @@ function pmkid() {
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
 	hcxdumptool_hang_process=$(ps aux | grep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" | grep -v "xterm" | awk '{print $2}')
-	sleep -m "$minutes"
+	sleep "$minutes"m
 	echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
 	kill -9 $hcxdumptool_xterm_pid &>/dev/null
 	wait $hcxdumptool_xterm_pid &>/dev/null
