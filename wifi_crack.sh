@@ -288,12 +288,12 @@ function choose_network_card() {
 	while IFS= read -r line; do
 		network_cards+=("$line")
 	done < <(ifconfig | awk '{print $1}' | grep : | sed 's/://')
-	network_card=$(gum choose "${network_cards[@]}")
+	network_card=$(gum choose --header="Select a network card" "${network_cards[@]}")
 	we_attack=0
 }
 
 function choose_type_of_attack() {
-	attack_mode=$(gum choose "PMKID" "Handshake")
+	attack_mode=$(gum choose --header="Select the type of attack" "PMKID" "Handshake")
 }
 
 function wait_for_confirmation() {
