@@ -230,7 +230,7 @@ function handshake() {
 }
 
 function pmkid() {
-	echo -ne "\n${ask}[?]${nc} How many minutes do you want to listen? [Recommended: 1]: " && read minutes
+	minutes=$(gum input --placeholder=1 --value=1 --char-limit=2 --width=0 --header="How many minutes do you want to listen? Recommended: 1")
 	echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
@@ -239,12 +239,12 @@ function pmkid() {
 	echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
 	kill -9 $hcxdumptool_xterm_pid &>/dev/null
 	wait $hcxdumptool_xterm_pid &>/dev/null
-	sleep 5
-	kill -9 $hcxdumptool_hang_process &>/dev/null
-	wait $hcxdumptool_hang_process &>/dev/null
+	sleep 1
+	kill -9 "$hcxdumptool_hang_process" &>/dev/null
+	wait "$hcxdumptool_hang_process" &>/dev/null
 	echo -e "\n${doing}[~]${nc} Obtaining hashes..."
 	hash_name="hashes_pmkid_$(date +%y_%m_%d_%H_%M).hc22000"
-	hcxpcapngtool -o ${hash_name} capture_pmkid 1>/dev/null
+	hcxpcapngtool -o "${hash_name}" capture_pmkid 1>/dev/null
 	rm -rf capture_pmkid &>/dev/null
 	mkdir -p hashes_pmkid
 	mv hashes_pmkid* hashes_pmkid &>/dev/null
