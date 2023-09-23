@@ -38,3 +38,5 @@ export GUM_CHOOSE_SELECTED_FOREGROUND=$nothing_but_lucas_green
 export GUM_SPIN_SPINNER="pulse"
 export GUM_SPIN_SPINNER_FOREGROUND=$nothing_but_lucas_green
 export GUM_CONFIRM_SELECTED_BACKGROUND=$nothing_but_lucas_green
+export GUM_TABLE_HEADER_FOREGROUND=$nothing_but_lucas_green
+export GUM_CHOOSE_HEADER_FOREGROUND=$nothing_but_lucas_green
