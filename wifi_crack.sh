@@ -106,6 +106,11 @@ function delete_temp_files() {
 	rm -rf "$networks_table_file"
 }
 
+function choose_wordlist_file() {
+	gum style "Select your wordlist file"
+	wordlist_path=$(gum file / -a)
+}
+
 function select_target_network() {
 	echo -e "\n${yellow}[*]${nc} Now we are going to scan the networks around you..."
 	echo -e "${yellow}[*]${nc} A new terminal will be opened to show you the networks around you"
@@ -221,7 +226,7 @@ function handshake() {
 		handshake_directory="handshakes"
 		mkdir -p ${handshake_directory}
 		mv capture_* ${handshake_directory}/
-
+		choose_wordlist_file
 		xterm -hold -e "aircrack-ng -w $wordlist_path ${handshake_directory}/capture_${bssid}-01.cap" &
 		aircrack_xterm_pid=$!
 		echo -e "\n${yellow}[*]${nc} Cracking handshake..."
@@ -258,6 +263,7 @@ function pmkid() {
 	if [ "$(echo $?)" == "0" ]; then
 		echo -e "\n${good}[+]${nc} Hashes obtained"
 		user_sleep
+		choose_wordlist_file
 		echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
 		do_not_close_sign
 		user_sleep

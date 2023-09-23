@@ -17,7 +17,6 @@ export info=${blue}
 export ask=${purple}
 export doing=${cyan}
 export cmd=${grey}
-export wordlist_path="/usr/share/wordlists/SecLists/Passwords/WiFi-WPA/probable-v2-wpa-top4800.txt"
 
 # gum variables
 
