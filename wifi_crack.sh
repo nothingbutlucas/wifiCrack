@@ -261,7 +261,7 @@ function pmkid() {
 		echo -e "\n${doing}[~]${nc} Initiating brute-force attack..."
 		do_not_close_sign
 		user_sleep
-		xterm -hold -e "hashcat -m 22000 -a 0 hashes_pmkid/${hash_name} $wordlist_path" &
+		xterm -hold -e "hashcat --status -m 22000 -a 0 hashes_pmkid/${hash_name} $wordlist_path" &
 		hashcat_xterm_pid=$!
 		echo -e "\n${yellow}[*]${nc} Remember to kill this terminal when the cracking were finished"
 		gum style "Use the following command: sudo kill -9 $hashcat_xterm_pid"
