@@ -231,18 +231,18 @@ function handshake() {
 }
 
 function pmkid() {
-	minutes=$(gum input --placeholder=1 --value=1 --char-limit=2 --width=0 --header="How many minutes do you want to listen? Recommended: 1")
+	minutes=$(gum input --placeholder=2 --value=2 --char-limit=2 --width=0 --header="How many minutes do you want to listen? Recommended: 2")
 	echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
 	do_not_close_sign
 	user_sleep
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
-	hcxdumptool_hang_process=$(ps aux | grep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" | grep -v "xterm" | awk '{print $2}')
-	sleep "$minutes"m
+	hcxdumptool_hang_process=$(pgrep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid")
+	gum spin --timeout="$minutes"m --title="Waiting PMKID's" sleep "$minutes"m
 	echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
 	kill -9 $hcxdumptool_xterm_pid &>/dev/null
 	wait $hcxdumptool_xterm_pid &>/dev/null
-	sleep 1
+	user_sleep
 	kill -9 "$hcxdumptool_hang_process" &>/dev/null
 	wait "$hcxdumptool_hang_process" &>/dev/null
 	echo -e "\n${doing}[~]${nc} Obtaining hashes..."
