@@ -15,10 +15,10 @@ function enable_managed_mode() {
 	airmon-ng stop ${network_card} &>/dev/null
 	echo -e "${good}[+]${nc} Network card is now in managed mode."
 	echo -e "\n${doing}[~]${nc} Restarting network manager..."
-	user_sleep
-	service network-manager restart &>/dev/null
-	service NetworkManager restart &>/dev/null
-	service wpa_supplicant restart &>/dev/null
+	systemctl restart network-manager &>/dev/null
+	systemctl restart NetworkManager &>/dev/null
+	systemctl restart wpa_supplicant &>/dev/null
+	systemctl restart networking &>/dev/null
 	echo -e "${good}[+]${nc} Network manager restarted."
 }
 
@@ -233,6 +233,8 @@ function handshake() {
 function pmkid() {
 	minutes=$(gum input --placeholder=1 --value=1 --char-limit=2 --width=0 --header="How many minutes do you want to listen? Recommended: 1")
 	echo -e "\n${doing}[~]${nc} Start listening at $(date +%H:%M:%S)..."
+	do_not_close_sign
+	user_sleep
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
 	hcxdumptool_hang_process=$(ps aux | grep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" | grep -v "xterm" | awk '{print $2}')
