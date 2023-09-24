@@ -47,17 +47,6 @@ function install_hcxdumptool() {
 	fi
 }
 
-function check_kaonashi() {
-	if [[ ! -f /usr/share/wordlists/kaonashiWPA100M.txt ]]; then
-		echo -e "${info}[·]${nc} kaonashi is not in the system"
-		echo -e "${info}[·]${nc} Downloading kaonashi .torrent file to the current directory"
-		echo -e "${info}[·]${nc} Please, download the torrent and extract the file to /usr/share/wordlists/"
-		echo -e "${info}[·]${nc} After that, run the script again"
-		mkdir -p /usr/share/wordlists/
-		wget https://github.com/kaonashi-passwords/Kaonashi/blob/master/wordlists/kaonashiWPA100M.7z.torrent &>/dev/null
-	fi
-}
-
 function install_all_missing_dependencies() {
 	$package_manager &>/dev/null
 	for program in "${missing_dependencies[@]}"; do
@@ -92,7 +81,6 @@ function see_all_dependencies() {
 	echo -e "\t${info}[~]${nc} hashcat -> For cracking the PMKID"
 	echo -e "${info}[~]${nc} For all the attacks"
 	echo -e "\t${info}[~]${nc} macchanger -> For changing your MAC address and annonymize yourself"
-	echo -e "\t${info}[~]${nc} kaonashi -> For cracking the handshakes and PMKID"
 	echo -e "\t${info}[~]${nc} gum -> For better UI"
 	exit_script
 }
@@ -110,8 +98,6 @@ function dependencies() {
 			installed_programs+=("$program")
 		fi
 	done
-
-	check_kaonashi
 
 	if [ ${#missing_dependencies} -gt 0 ]; then
 		echo -e "\n${blue}[·]${nc} My recommendation is to install them but by yourself, you never know who make the package you are installing..."
