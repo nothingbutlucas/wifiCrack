@@ -242,7 +242,7 @@ function pmkid() {
 	user_sleep
 	xterm -hold -e "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid" &
 	hcxdumptool_xterm_pid=$!
-	hcxdumptool_hang_process=$(pgrep "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid")
+	hcxdumptool_hang_process=$(pgrep -f "hcxdumptool -i ${network_card} --enable_status=1 -o capture_pmkid")
 	gum spin --timeout="$minutes"m --title="Waiting PMKID's" sleep "$minutes"m
 	echo -e "\n${doing}[~]${nc} Stop listening at $(date +%H:%M:%S)..."
 	kill -9 $hcxdumptool_xterm_pid &>/dev/null
