@@ -43,8 +43,8 @@ sudo ./wifi_crack.sh
 2. **Lógica** de los ataques
 
 ## TODO
-[ ] - Soporte de ataque con 2 placas de red (Una de-autentica, la otra escucha)
-[ ] - Añadir posibilidad de capturar pmkid haciendo un ataque de handshake
-[ ] - Flag para saltarte la verificación de dependencias
-[ ] - Soporte al inicio por falta de gum
-[ ] - Agregar opción -y para automatizar el proceso de ataque
+- [ ] Soporte de ataque con 2 placas de red (Una de-autentica, la otra escucha)
+- [ ] Añadir posibilidad de capturar pmkid haciendo un ataque de handshake
+- [ ] Flag para saltarte la verificación de dependencias
+- [ ] Soporte al inicio por falta de gum
+- [ ] Agregar opción -y para automatizar el proceso de ataque
