@@ -100,10 +100,8 @@ function dependencies() {
 	done
 
 	if [ ${#missing_dependencies} -gt 0 ]; then
-		echo -e "\n${blue}[·]${nc} My recommendation is to install them but by yourself, you never know who make the package you are installing..."
-		echo -e "${blue}[·]${nc} If you want to install them by yourself, just press n, install the dependencies and later run the script again (Make sure that the dependencies are somewhere on your path)"
-		echo -e "${blue}[·]${nc} If you are not so paranoid, just press y and let me install them for you"
-		gum confirm "Do you want to install the missing dependencies?" && check_installer_manager && install_all_missing_dependencies || echo -e "${green}[+]${nc} Ok, I will not install the missing dependencies\n${green}[+]${nc} Great for you! You are so paranoid that you do not trust me to install the missing dependencies for you, but no so paranoid to run this script with sudo xD" && exit_script
+		echo -e "\n${blue}[·]${nc} My recommendation is to install them but by yourself"
+		gum confirm "Do you want to install the missing dependencies?" && check_installer_manager && install_all_missing_dependencies || echo -e "${green}[+]${nc} Ok, I will not install the missing dependencies\n" && exit_script
 	fi
 	programs=(aircrack-ng macchanger hcxdumptool hashcat tshark)
 	if [ ${#installed_programs} -eq ${#programs} ]; then
