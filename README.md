@@ -27,38 +27,25 @@ sudo ./wifi_crack.sh
 
 1. Actualización de **paquetes y programas** a sus respectivas versiones de **2023**.
 2. **Compatibilidad** con distribuciones que manejan **apt, pacman, yum o dnf** cómo administrador de paquetes.
-3. **Menú interactivo** para elegir la **tarjeta de red** haciendo uso del elegante [gum](https://github.com/charmbracelet/gum).
+3. **Menú interactivo** para elegir la **tarjeta de red** haciendo uso del elegante **[gum](https://github.com/charmbracelet/gum)**.
 4. **Compatibilidad** a la hora de **reiniciar** el **network-manager/NetworkManager** y el **wpa_supplicant**.
-5. En vez de poner el nombre de la red en un ataque handshake, ponemos el [bssid](https://es.wikipedia.org/wiki/BSSID). Esto nos permite ser más precisos y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
-6. En vez de usar una wordlist predeterminada, elegís la tuya en el momento de la ejecución.
-7. En caso de que alguno de los 2 ataques fallen, se pueden reintentar dentro del flujo del mismo script.
+5. En vez de poner el nombre de la red en un ataque handshake, ponemos el **[bssid](https://es.wikipedia.org/wiki/BSSID)**. Esto nos permite ser **más precisos** y evitar tener que manejar los espacios y caracteres raros de algunas redes wifi.
+6. En vez de usar una wordlist predeterminada, **elegís la tuya** en el momento de la ejecución.
+7. En caso de que alguno de los 2 ataques fallen, **se pueden reintentar** dentro del flujo del mismo script.
 8. En el ataque **PMKID** se pueden seleccionar los minutos de escaneo.
-9. Rotación de MAC Address entre reintentos.
-10. Uso de [gum]("https://github.com/charmbracelet/gum") en el **renderizado** del texto, teniendo una UI más agradable y elegante.
-11. No hace falta pasarle las flags de los ataques, se pueden elegir de forma interactiva.
+9. **Rotación de MAC Address** entre reintentos.
+10. Uso de **[gum](https://github.com/charmbracelet/gum)** en el *renderizado* del texto, teniendo una UI más agradable y elegante.
+11. No hace falta pasarle las flags de los ataques, se pueden **elegir de forma interactiva**.
 
-
-## El resto de las cosas se mantienen del script original:
+## Cosas se mantienen del script original:
 
 1. 2 modos de ataque: **PKMID y Handshake**
 2. **Lógica** de los ataques
 
-```
-Usage: ./wifi_crack.sh -a attack_mode
-        a) Attack mode
-        Available attack modes:
-                PMKID
-                Handshake
-        h) Help panel
-        Show this help panel
-
-        Example: ./wifi_crack.sh -a PMKID
-```
-
 ## TODO
 
-1. Soporte de ataque con 2 placas de red (Una de-autentica, la otra escucha)
-2. Añadir posibilidad de capturar pmkid haciendo un ataque de handshake
-3. Flag para saltarte la verificación de dependencias
-4. Soporte al inicio por falta de gum
-5. Agregar opción -y para automatizar el proceso de ataque
+[ ] - Soporte de ataque con 2 placas de red (Una de-autentica, la otra escucha)
+[ ] - Añadir posibilidad de capturar pmkid haciendo un ataque de handshake
+[ ] - Flag para saltarte la verificación de dependencias
+[ ] - Soporte al inicio por falta de gum
+[ ] - Agregar opción -y para automatizar el proceso de ataque
